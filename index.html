@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>EDNX Live Radar v7</title>
+<title>EDNX Live Radar v7.1</title>
 <style>
 :root{
   --bg:#010301;
@@ -205,7 +205,7 @@ button:focus,select:focus{outline:2px solid var(--bright);outline-offset:2px}
     <label>AIRSPACE
       <select id="airspaceMode">
         <option value="off">AUS</option>
-        <option value="local" selected>CTR + RMZ</option>
+        <option value="local" selected>EDDM CTR + EDNX RMZ</option>
         <option value="all">ALLE</option>
       </select>
     </label>
@@ -302,14 +302,16 @@ button:focus,select:focus{outline:2px solid var(--bright);outline-offset:2px}
 
   // lokale Ost/Nord-Projektion in km, gut für 20–100 km Radius
   function project(lat,lon,maxKm){
+    // Lokale equirektangulare Projektion um EDNX.
+    // Wichtig: EAST und NORTH benutzen denselben Pixel/km-Maßstab,
+    // damit GeoJSON-Polygone nicht horizontal gestreckt werden.
     const meanLat=rd((lat+CENTER.lat)/2);
     const north=(lat-CENTER.lat)*111.32;
     const east=(lon-CENTER.lon)*111.32*Math.cos(meanLat);
 
-    // Radarfläche: x=50..1080, y=30..730
-    const halfW=515, halfH=350;
-    const x=565 + (east/maxKm)*halfW;
-    const y=380 - (north/maxKm)*halfH;
+    const pixelsPerKm=350/maxKm; // vertikale Halbausdehnung bestimmt den Maßstab
+    const x=565 + east*pixelsPerKm;
+    const y=380 - north*pixelsPerKm;
     return {x,y};
   }
 
@@ -333,14 +335,29 @@ button:focus,select:focus{outline:2px solid var(--bright);outline-offset:2px}
 
   function isLocalDesiredAirspace(item){
     const n=airspaceName(item).toUpperCase()
-      .replaceAll('Ü','U').replaceAll('Ö','O').replaceAll('Ä','A');
+      .replaceAll('Ü','UE')
+      .replaceAll('Ö','OE')
+      .replaceAll('Ä','AE')
+      .replaceAll('ß','SS');
+
     const cls=classifyAirspace(item);
+
     if(cls==='rmz'){
-      return n.includes('OBERSCHLEISSHEIM') || n.includes('SCHLEISSHEIM') || n.includes('EDNX');
+      return n.includes('RMZ EDNX')
+        || n.includes('OBERSCHLEISSHEIM')
+        || n.includes('SCHLEISSHEIM')
+        || n.includes('EDNX');
     }
+
     if(cls==='ctr'){
-      return n.includes('MUNCHEN') || n.includes('MUNICH') || n.includes('EDDM');
+      return n.includes('CTR MUENCHEN')
+        || n.includes('MUENCHEN')
+        || n.includes('MUNICH')
+        || n.includes('EDDM')
+        || n.includes('CTR SEKTOR EDNX')
+        || n.includes('EDNX');
     }
+
     return false;
   }
 
@@ -533,7 +550,7 @@ button:focus,select:focus{outline:2px solid var(--bright);outline-offset:2px}
     $('gridEast').textContent=`E +${maxKm}`;
 
     $('msg').textContent=raw.length
-      ? `${visible.length} angezeigt · ${raw.length} Rohziele · Trail 2 min · Ground nur EDNX · Airspace ${airspaceMode.options[airspaceMode.selectedIndex].text}`
+      ? `${visible.length} angezeigt · ${raw.length} Rohziele · Trail 2 min · Ground nur EDNX · Airspace ${airspaceMode.options[airspaceMode.selectedIndex].text} · Projektion 1:1`
       : 'Keine Ziele empfangen';
   }
 
