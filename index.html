@@ -3,13 +3,17 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>EDNX Live Radar v5</title>
+<title>EDNX Live Radar v6</title>
+
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+ integrity="sha256-p4NxAoJBhIINfQ3ynZsoMZ7SUKMZeklaodGmR3fvb4A=" crossorigin=""/>
+
 <style>
 :root{
   --bg:#010301;
   --panel:#020702;
-  --grid:#173d20;
-  --grid2:#2f6a3a;
+  --grid:#1a4a26;
+  --grid2:#347343;
   --text:#9cff81;
   --muted:#6f9f70;
   --bright:#b5ff98;
@@ -29,24 +33,75 @@ header{
   display:flex;align-items:center;justify-content:space-between;
   padding:0 22px;
   border-bottom:1px solid var(--grid);
+  background:#010301;
 }
 .title{font-size:29px;letter-spacing:.08em;font-weight:700}
 .sub{font-size:13px;color:var(--muted);margin-top:4px}
 .status{text-align:right;font-size:14px;line-height:1.5;color:var(--muted)}
 .live{color:var(--bright)}
 .err{color:var(--error)}
+
 main{
   flex:1;min-height:0;
   display:grid;
   grid-template-columns:minmax(0,1fr) 360px;
 }
-#radarWrap{
-  position:relative;
-  min-width:0;min-height:0;
-  overflow:hidden;
+#map{
+  width:100%;height:100%;
   background:#010301;
 }
-#radar{width:100%;height:100%;display:block}
+.leaflet-container{
+  background:#010301;
+  font-family:Consolas,Menlo,Monaco,"Courier New",monospace;
+}
+.leaflet-control-attribution{
+  background:rgba(0,0,0,.66)!important;
+  color:#82a584!important;
+  font-size:10px!important;
+}
+.leaflet-control-attribution a{color:#9cff81!important}
+
+/* OFM etwas abdunkeln, damit Traffic lesbar bleibt */
+.ofm-base-pane{filter:brightness(.48) saturate(.72) contrast(1.12)}
+.ofm-aero-pane{filter:brightness(.75) saturate(.9) contrast(1.08)}
+
+.aircraft-icon{
+  background:transparent!important;
+  border:0!important;
+}
+.aircraft-symbol{
+  position:absolute;left:50%;top:50%;
+  width:23px;height:23px;
+  transform-origin:50% 50%;
+  pointer-events:none;
+}
+.aircraft-symbol svg{
+  width:23px;height:23px;overflow:visible;
+}
+.aircraft-label{
+  position:absolute;
+  left:18px;top:-16px;
+  width:max-content;
+  max-width:235px;
+  pointer-events:none;
+  color:#b5ff98;
+  font-size:12px;
+  line-height:1.18;
+  text-shadow:0 0 3px #000,0 0 3px #000,1px 1px 1px #000;
+  white-space:nowrap;
+}
+.aircraft-label .small{color:#90bd91;font-size:11px}
+.ednx-label{
+  color:#b5ff98;font-size:13px;font-weight:700;
+  text-shadow:0 0 3px #000,0 0 3px #000;
+  white-space:nowrap;
+}
+.ednx-marker{
+  width:12px;height:12px;border-radius:50%;
+  border:2px solid #b5ff98;background:#14391d;
+  box-shadow:0 0 5px #8fff79;
+}
+
 aside{
   border-left:1px solid var(--grid);
   background:#010401;
@@ -68,12 +123,14 @@ aside h2{
 .smallIcon{width:28px;height:28px;display:block}
 .call{font-size:17px;font-weight:700;color:var(--bright)}
 .meta{font-size:12px;color:#81ae84;line-height:1.45;margin-top:3px}
+
 footer{
   min-height:78px;
   display:flex;align-items:center;justify-content:space-between;
   gap:14px;flex-wrap:wrap;
   padding:10px 18px;
   border-top:1px solid var(--grid);
+  background:#010301;
 }
 .controls{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
 label{font-size:11px;color:var(--muted);display:flex;align-items:center;gap:6px}
@@ -88,8 +145,10 @@ select,button{
   font-size:13px;
 }
 button{cursor:pointer}
+button.active{background:#14391d;border-color:#8bcf8d}
 button:focus,select:focus{outline:2px solid var(--bright);outline-offset:2px}
-#msg{font-size:11px;color:var(--muted);max-width:560px;text-align:right}
+#msg{font-size:11px;color:var(--muted);max-width:590px;text-align:right}
+
 @media(max-width:900px){
   main{grid-template-columns:1fr}
   aside{display:none}
@@ -100,6 +159,7 @@ button:focus,select:focus{outline:2px solid var(--bright);outline-offset:2px}
 }
 </style>
 </head>
+
 <body>
 <header>
   <div>
@@ -113,52 +173,7 @@ button:focus,select:focus{outline:2px solid var(--bright);outline-offset:2px}
 </header>
 
 <main>
-  <div id="radarWrap">
-    <svg id="radar" viewBox="0 0 1200 780" role="img" aria-label="EDNX Live Radar">
-      <!-- rechteckige Radarfläche -->
-      <rect x="50" y="30" width="1030" height="700" fill="none" stroke="#2f6a3a" stroke-width="1.2"/>
-
-      <!-- Raster -->
-      <g id="grid" fill="none" stroke="#173d20" stroke-width="1">
-        <line x1="50" y1="205" x2="1080" y2="205"/>
-        <line x1="50" y1="380" x2="1080" y2="380"/>
-        <line x1="50" y1="555" x2="1080" y2="555"/>
-        <line x1="307.5" y1="30" x2="307.5" y2="730"/>
-        <line x1="565" y1="30" x2="565" y2="730"/>
-        <line x1="822.5" y1="30" x2="822.5" y2="730"/>
-      </g>
-
-      <!-- Hauptachsen -->
-      <g fill="none" stroke="#285b33" stroke-width="1.2">
-        <line x1="565" y1="30" x2="565" y2="730"/>
-        <line x1="50" y1="380" x2="1080" y2="380"/>
-      </g>
-
-      <g fill="#5f8d66" font-size="14">
-        <text x="555" y="22">N</text>
-        <text x="1088" y="385">E</text>
-        <text x="555" y="750">S</text>
-        <text x="28" y="385">W</text>
-
-        <text id="topRange" x="84" y="54">±30 km</text>
-        <text id="gridNorth" x="575" y="55">N +30</text>
-        <text id="gridSouth" x="575" y="718">S -30</text>
-        <text id="gridWest" x="62" y="370">W -30</text>
-        <text id="gridEast" x="1000" y="370">E +30</text>
-      </g>
-
-      <!-- EDNX Zentrum -->
-      <g>
-        <circle cx="565" cy="380" r="5" fill="#b5ff98"/>
-        <circle cx="565" cy="380" r="12" fill="none" stroke="#4d8155"/>
-        <text x="583" y="375" fill="#b5ff98" font-size="15">EDNX</text>
-        <text x="583" y="392" fill="#668c6a" font-size="11">1,594 FT MSL</text>
-      </g>
-
-      <g id="trails"></g>
-      <g id="planes"></g>
-    </svg>
-  </div>
+  <div id="map" aria-label="EDNX Radar und optionale OpenFlightMaps VFR-Karte"></div>
 
   <aside>
     <h2 id="listTitle">AIRCRAFT ≤ 5.000 FT · 30 KM</h2>
@@ -177,6 +192,7 @@ button:focus,select:focus{outline:2px solid var(--bright);outline-offset:2px}
         <option value="100">100 km</option>
       </select>
     </label>
+
     <label>MAX HÖHE
       <select id="alt">
         <option value="2500">2.500 ft</option>
@@ -186,30 +202,109 @@ button:focus,select:focus{outline:2px solid var(--bright);outline-offset:2px}
         <option value="99999">ALLE</option>
       </select>
     </label>
+
     <label>GROUND EDNX
       <select id="ground">
         <option value="on" selected>AN</option>
         <option value="off">AUS</option>
       </select>
     </label>
+
+    <button id="mapToggle" type="button">VFR MAP: AUS</button>
     <button id="refresh" type="button">AKTUALISIEREN</button>
   </div>
-  <div id="msg">Quelle: ADSB.lol · Aktualisierung alle 10 Sekunden</div>
+
+  <div id="msg">Quelle: ADSB.lol · VFR-Karte optional: open flightmaps</div>
 </footer>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+ integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
 
 <script>
 (() => {
-  const CENTER={lat:48.239166,lon:11.559334};
+  const CENTER=[48.239166,11.559334];
   const EDNX_GROUND_RADIUS_KM=1.8;
   const $=id=>document.getElementById(id);
-  const planes=$('planes'), trails=$('trails'), list=$('list');
-  const radiusSel=$('radius'), altSel=$('alt'), groundSel=$('ground');
 
-  let raw=[], updated=0, busy=false;
+  const radiusSel=$('radius');
+  const altSel=$('alt');
+  const groundSel=$('ground');
+  const mapToggle=$('mapToggle');
+  const list=$('list');
 
-  // Trail-Historie wird in GEO-Koordinaten gespeichert.
-  // Dadurch bleibt sie bei Range-Änderungen korrekt und wird neu projiziert.
+  let raw=[];
+  let updated=0;
+  let busy=false;
+  let mapVisible=false;
+
+  // Geo-Historie statt Pixel-Historie: bleibt bei Range-Wechsel korrekt.
   const history=new Map();
+
+  // Leaflet Karte bleibt immer aktiv; nur die VFR-Tiles werden ein/ausgeschaltet.
+  const map=L.map('map',{
+    center:CENTER,
+    zoom:11,
+    zoomControl:false,
+    attributionControl:true,
+    dragging:false,
+    touchZoom:false,
+    scrollWheelZoom:false,
+    doubleClickZoom:false,
+    boxZoom:false,
+    keyboard:false
+  });
+
+  // Separate Panes für Helligkeit/Layer-Reihenfolge.
+  map.createPane('ofmBase');
+  map.getPane('ofmBase').style.zIndex=200;
+  map.getPane('ofmBase').classList.add('ofm-base-pane');
+
+  map.createPane('ofmAero');
+  map.getPane('ofmAero').style.zIndex=210;
+  map.getPane('ofmAero').classList.add('ofm-aero-pane');
+
+  map.createPane('radarGrid');
+  map.getPane('radarGrid').style.zIndex=350;
+
+  map.createPane('trailPane');
+  map.getPane('trailPane').style.zIndex=430;
+
+  map.createPane('trafficPane');
+  map.getPane('trafficPane').style.zIndex=500;
+
+  // OpenFlightMaps besteht aus Basis- und Aero-Layer.
+  const ofmBase=L.tileLayer(
+    'https://nwy-tiles-api.prod.newaydata.com/tiles/{z}/{x}/{y}.jpg?path=latest/base/latest',
+    {
+      minZoom:7,maxZoom:13,
+      pane:'ofmBase',
+      opacity:1,
+      attribution:'© open flightmaps association'
+    }
+  );
+
+  const ofmAero=L.tileLayer(
+    'https://nwy-tiles-api.prod.newaydata.com/tiles/{z}/{x}/{y}.png?path=latest/aero/latest',
+    {
+      minZoom:7,maxZoom:13,
+      pane:'ofmAero',
+      opacity:1,
+      attribution:'© open flightmaps association'
+    }
+  );
+
+  const gridGroup=L.layerGroup().addTo(map);
+  const trailGroup=L.layerGroup().addTo(map);
+  const trafficGroup=L.layerGroup().addTo(map);
+
+  // EDNX Marker
+  const ednxIcon=L.divIcon({
+    className:'',
+    iconSize:[110,28],
+    iconAnchor:[6,6],
+    html:'<div class="ednx-marker"></div><div class="ednx-label" style="position:absolute;left:17px;top:-2px">EDNX</div>'
+  });
+  L.marker(CENTER,{icon:ednxIcon,pane:'trafficPane',interactive:false}).addTo(map);
 
   const rd=d=>d*Math.PI/180;
   const dg=r=>r*180/Math.PI;
@@ -217,14 +312,15 @@ button:focus,select:focus{outline:2px solid var(--bright);outline-offset:2px}
 
   function distanceKm(lat1,lon1,lat2,lon2){
     const R=6371, dLat=rd(lat2-lat1), dLon=rd(lon2-lon1);
-    const a=Math.sin(dLat/2)**2 + Math.cos(rd(lat1))*Math.cos(rd(lat2))*Math.sin(dLon/2)**2;
+    const a=Math.sin(dLat/2)**2+
+      Math.cos(rd(lat1))*Math.cos(rd(lat2))*Math.sin(dLon/2)**2;
     return 2*R*Math.asin(Math.sqrt(a));
   }
 
   function bearing(lat1,lon1,lat2,lon2){
     const y=Math.sin(rd(lon2-lon1))*Math.cos(rd(lat2));
-    const x=Math.cos(rd(lat1))*Math.sin(rd(lat2)) -
-            Math.sin(rd(lat1))*Math.cos(rd(lat2))*Math.cos(rd(lon2-lon1));
+    const x=Math.cos(rd(lat1))*Math.sin(rd(lat2))-
+      Math.sin(rd(lat1))*Math.cos(rd(lat2))*Math.cos(rd(lon2-lon1));
     return (dg(Math.atan2(y,x))+360)%360;
   }
 
@@ -236,11 +332,12 @@ button:focus,select:focus{outline:2px solid var(--bright);outline-offset:2px}
 
   function callsign(ac){return (ac.flight||'').trim()}
   function reg(ac){return (ac.r||'').trim()}
-  function name(ac){return callsign(ac)||reg(ac)||(ac.hex||'').toUpperCase()||'UNBEKANNT'}
   function type(ac){return (ac.t||'').trim()||'—'}
+  function name(ac){return callsign(ac)||reg(ac)||(ac.hex||'').toUpperCase()||'UNBEKANNT'}
 
   function hdg(ac){
-    const v=[ac.track,ac.true_heading,ac.mag_heading].map(Number).find(Number.isFinite);
+    const vals=[ac.track,ac.true_heading,ac.mag_heading].map(Number);
+    const v=vals.find(Number.isFinite);
     return Number.isFinite(v)?((v%360)+360)%360:null;
   }
 
@@ -250,114 +347,165 @@ button:focus,select:focus{outline:2px solid var(--bright);outline-offset:2px}
   }
 
   function key(ac){
-    return (ac.hex||reg(ac)||callsign(ac)||Math.random().toString(36)).trim();
+    return (ac.hex||reg(ac)||callsign(ac)||'unknown').trim();
   }
 
   function esc(s){
-    return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+    return String(s).replace(/[&<>"']/g,c=>({
+      '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'
+    }[c]));
   }
 
-  function isAllowedGround(ac,d){
+  function permittedGround(ac,d){
     const a=altitude(ac);
-    if(a!==0) return true;
-    if(groundSel.value==='off') return false;
+    if(a!==0)return true;
+    if(groundSel.value==='off')return false;
     return d<=EDNX_GROUND_RADIUS_KM;
   }
 
-  function dataLine(ac){
-    const r=reg(ac), c=callsign(ac), a=altitude(ac), s=speed(ac), h=hdg(ac);
-    const first=c ? (r ? `${r} · ${c}` : c) : (r || name(ac));
-    const second=`${a===null?'—':fmt(a)+' ft'} · ${s===null?'—':s+' kt'} · ${h===null?'—':String(Math.round(h)).padStart(3,'0')+'°'}`;
-    return {first,second};
-  }
-
-  function rememberPosition(ac){
-    const k=key(ac), now=Date.now();
+  function remember(ac){
+    const k=key(ac);
+    const now=Date.now();
     let arr=history.get(k)||[];
-    arr.push({lat:Number(ac.lat),lon:Number(ac.lon),t:now});
+
+    // Nur bei neuer Datenposition Punkt ergänzen.
+    const lat=Number(ac.lat),lon=Number(ac.lon);
+    const last=arr[arr.length-1];
+    if(!last || Math.abs(last.lat-lat)>0.00001 || Math.abs(last.lon-lon)>0.00001){
+      arr.push({lat,lon,t:now});
+    }
+
     arr=arr.filter(p=>now-p.t<120000);
-    if(arr.length>18) arr=arr.slice(-18);
+    if(arr.length>24)arr=arr.slice(-24);
     history.set(k,arr);
     return arr;
   }
 
-  // lokale Ost/Nord-Projektion in km, gut für 20–100 km Radius
-  function project(lat,lon,maxKm){
-    const meanLat=rd((lat+CENTER.lat)/2);
-    const north=(lat-CENTER.lat)*111.32;
-    const east=(lon-CENTER.lon)*111.32*Math.cos(meanLat);
+  function fitRadarRange(){
+    const km=Number(radiusSel.value);
+    const dLat=km/111.32;
+    const dLon=km/(111.32*Math.cos(rd(CENTER[0])));
+    const bounds=L.latLngBounds(
+      [CENTER[0]-dLat,CENTER[1]-dLon],
+      [CENTER[0]+dLat,CENTER[1]+dLon]
+    );
+    map.fitBounds(bounds,{padding:[24,24],animate:false});
+  }
 
-    // Radarfläche: x=50..1080, y=30..730
-    const halfW=515, halfH=350;
-    const x=565 + (east/maxKm)*halfW;
-    const y=380 - (north/maxKm)*halfH;
-    return {x,y};
+  function drawRadarGrid(){
+    gridGroup.clearLayers();
+    const maxKm=Number(radiusSel.value);
+
+    // Range-Ringe 25/50/75/100 %
+    [0.25,0.5,0.75,1].forEach((f,i)=>{
+      L.circle(CENTER,{
+        radius:maxKm*1000*f,
+        pane:'radarGrid',
+        interactive:false,
+        color:i===3?'#347343':'#1a4a26',
+        weight:i===3?1.2:1,
+        opacity:.85,
+        fill:false
+      }).addTo(gridGroup);
+    });
+
+    // N-S / E-W Kreuz über Range hinaus
+    const dLat=maxKm/111.32;
+    const dLon=maxKm/(111.32*Math.cos(rd(CENTER[0])));
+    const lineStyle={
+      pane:'radarGrid',
+      interactive:false,
+      color:'#1f522c',
+      weight:1,
+      opacity:.8
+    };
+
+    L.polyline([
+      [CENTER[0]-dLat,CENTER[1]],
+      [CENTER[0]+dLat,CENTER[1]]
+    ],lineStyle).addTo(gridGroup);
+
+    L.polyline([
+      [CENTER[0],CENTER[1]-dLon],
+      [CENTER[0],CENTER[1]+dLon]
+    ],lineStyle).addTo(gridGroup);
+  }
+
+  function aircraftIcon(ac){
+    const heading=hdg(ac)??0;
+    const c=callsign(ac),r=reg(ac);
+    const first=c ? (r ? `${r} · ${c}` : c) : (r||name(ac));
+    const a=altitude(ac);
+    const s=speed(ac);
+    const h=hdg(ac);
+
+    const info=`${a===0?'GND':fmt(a)+' ft'} · ${s===null?'—':s+' kt'} · ${h===null?'—':String(Math.round(h)).padStart(3,'0')+'°'}`;
+
+    return L.divIcon({
+      className:'aircraft-icon',
+      iconSize:[25,25],
+      iconAnchor:[12.5,12.5],
+      html:`
+        <div class="aircraft-symbol" style="transform:translate(-50%,-50%) rotate(${heading}deg)">
+          <svg viewBox="-12 -12 24 24" aria-hidden="true">
+            <path d="M0,-10 L2,-2.2 L9.5,1.2 L9.5,3.1 L2.6,2.4 L1.6,9 L-1.6,9 L-2.6,2.4 L-9.5,3.1 L-9.5,1.2 L-2,-2.2 Z"
+              fill="none" stroke="#a8ff8e" stroke-width="1.25" stroke-linejoin="round"/>
+          </svg>
+        </div>
+        <div class="aircraft-label">
+          ${esc(first)}
+          <div class="small">${esc(info)}</div>
+        </div>`
+    });
   }
 
   function render(){
-    const maxKm=Number(radiusSel.value), maxAlt=Number(altSel.value);
-
-    const visible=raw.map(ac=>{
-      if(!Number.isFinite(Number(ac.lat))||!Number.isFinite(Number(ac.lon))) return null;
-      const a=altitude(ac);
-      if(a===null||a>maxAlt) return null;
-      const d=distanceKm(CENTER.lat,CENTER.lon,Number(ac.lat),Number(ac.lon));
-      if(d>maxKm) return null;
-      if(!isAllowedGround(ac,d)) return null;
-      return {...ac,_alt:a,_dist:d,_bear:bearing(CENTER.lat,CENTER.lon,Number(ac.lat),Number(ac.lon))};
-    }).filter(Boolean).sort((a,b)=>a._dist-b._dist);
-
-    planes.innerHTML='';
-    trails.innerHTML='';
+    trafficGroup.clearLayers();
+    trailGroup.clearLayers();
     list.innerHTML='';
 
+    // EDNX Marker nach clear wieder setzen
+    L.marker(CENTER,{icon:ednxIcon,pane:'trafficPane',interactive:false}).addTo(trafficGroup);
+
+    const maxKm=Number(radiusSel.value);
+    const maxAlt=Number(altSel.value);
+
+    const visible=raw.map(ac=>{
+      if(!Number.isFinite(Number(ac.lat))||!Number.isFinite(Number(ac.lon)))return null;
+      const a=altitude(ac);
+      if(a===null||a>maxAlt)return null;
+      const d=distanceKm(CENTER[0],CENTER[1],Number(ac.lat),Number(ac.lon));
+      if(d>maxKm)return null;
+      if(!permittedGround(ac,d))return null;
+      return {...ac,_alt:a,_dist:d,_bearing:bearing(CENTER[0],CENTER[1],Number(ac.lat),Number(ac.lon))};
+    }).filter(Boolean).sort((a,b)=>a._dist-b._dist);
+
     visible.forEach(ac=>{
-      const p=project(Number(ac.lat),Number(ac.lon),maxKm);
-      const heading=hdg(ac)??ac._bear;
+      const arr=remember(ac);
 
-      const arr=rememberPosition(ac);
-
-      // Alte Spuren immer anhand der GEO-Koordinaten neu projizieren.
       if(arr.length>1){
-        const pts=arr
-          .map(h=>project(h.lat,h.lon,maxKm))
-          .filter(pt=>pt.x>=50&&pt.x<=1080&&pt.y>=30&&pt.y<=730);
-
-        if(pts.length>1){
-          const pl=document.createElementNS('http://www.w3.org/2000/svg','polyline');
-          pl.setAttribute('points',pts.map(pt=>`${pt.x},${pt.y}`).join(' '));
-          pl.setAttribute('fill','none');
-          pl.setAttribute('stroke','#6fae70');
-          pl.setAttribute('stroke-width','1.2');
-          pl.setAttribute('stroke-dasharray','2 5');
-          pl.setAttribute('opacity','.68');
-          trails.appendChild(pl);
-        }
+        L.polyline(arr.map(p=>[p.lat,p.lon]),{
+          pane:'trailPane',
+          interactive:false,
+          color:'#72b374',
+          opacity:.67,
+          weight:1.25,
+          dashArray:'2,6'
+        }).addTo(trailGroup);
       }
 
-      const g=document.createElementNS('http://www.w3.org/2000/svg','g');
-      g.setAttribute('transform',`translate(${p.x} ${p.y}) rotate(${heading})`);
-      g.innerHTML=`
-        <path d="M0,-11 L2.2,-2.2 L10,1.5 L10,3.5 L2.8,2.7 L1.8,10 L-1.8,10 L-2.8,2.7 L-10,3.5 L-10,1.5 L-2.2,-2.2 Z"
-              fill="none" stroke="#9cff81" stroke-width="1.25" stroke-linejoin="round"/>
-      `;
-      planes.appendChild(g);
+      L.marker([Number(ac.lat),Number(ac.lon)],{
+        icon:aircraftIcon(ac),
+        pane:'trafficPane',
+        interactive:false
+      }).addTo(trafficGroup);
 
-      const dl=dataLine(ac);
-      const tx=document.createElementNS('http://www.w3.org/2000/svg','text');
-      tx.setAttribute('x',p.x+15);
-      tx.setAttribute('y',p.y-9);
-      tx.setAttribute('font-size','11.5');
-      tx.innerHTML=`
-        <tspan x="${p.x+15}" fill="#b5ff98">${esc(dl.first)}</tspan>
-        <tspan x="${p.x+15}" dy="14" fill="#7ea77f">${esc(dl.second)}</tspan>`;
-      planes.appendChild(tx);
+      const c=callsign(ac),r=reg(ac);
+      const top=c||r||name(ac);
+      const secondary=(c&&r)?r:(type(ac)!=='—'?type(ac):'');
 
       const div=document.createElement('div');
       div.className='flight';
-      const c=callsign(ac), r=reg(ac);
-      const top=c||r||name(ac);
-      const secondary=(c&&r)?r:(type(ac)!=='—'?type(ac):'');
       div.innerHTML=`
         <svg class="smallIcon" viewBox="-12 -12 24 24" aria-hidden="true">
           <path d="M0,-9 L2,-2 L9,1 L9,3 L2.5,2.5 L1.5,9 L-1.5,9 L-2.5,2.5 L-9,3 L-9,1 L-2,-2 Z"
@@ -365,23 +513,41 @@ button:focus,select:focus{outline:2px solid var(--bright);outline-offset:2px}
         </svg>
         <div>
           <div class="call">${esc(top)}</div>
-          <div class="meta">${secondary?esc(secondary)+' · ':''}${esc(type(ac))}<br>
-          ${ac._alt===0?'GROUND':fmt(ac._alt)+' ft'} · ${speed(ac)===null?'—':speed(ac)+' kt'} · ${hdg(ac)===null?'—':String(Math.round(hdg(ac))).padStart(3,'0')+'°'}<br>
-          ${ac._dist.toFixed(1)} km · ${Math.round(ac._bear)}°</div>
+          <div class="meta">
+            ${secondary?esc(secondary)+' · ':''}${esc(type(ac))}<br>
+            ${ac._alt===0?'GROUND':fmt(ac._alt)+' ft'} ·
+            ${speed(ac)===null?'—':speed(ac)+' kt'} ·
+            ${hdg(ac)===null?'—':String(Math.round(hdg(ac))).padStart(3,'0')+'°'}<br>
+            ${ac._dist.toFixed(1)} km · ${Math.round(ac._bearing)}°
+          </div>
         </div>`;
       list.appendChild(div);
     });
 
-    $('listTitle').textContent=`AIRCRAFT ≤ ${maxAlt>90000?'ALLE':fmt(maxAlt)+' FT'} · ${maxKm} KM · ${visible.length}`;
-    $('topRange').textContent=`±${maxKm} km`;
-    $('gridNorth').textContent=`N +${maxKm}`;
-    $('gridSouth').textContent=`S -${maxKm}`;
-    $('gridWest').textContent=`W -${maxKm}`;
-    $('gridEast').textContent=`E +${maxKm}`;
+    $('listTitle').textContent=
+      `AIRCRAFT ≤ ${maxAlt>90000?'ALLE':fmt(maxAlt)+' FT'} · ${maxKm} KM · ${visible.length}`;
 
-    $('msg').textContent=raw.length
-      ? `${visible.length} angezeigt · ${raw.length} Rohziele · Trail 2 min · Ground nur EDNX`
-      : 'Keine Ziele empfangen';
+    $('msg').textContent=
+      `${visible.length} angezeigt · ${raw.length} Rohziele · Trail 2 min · VFR Map ${mapVisible?'AN':'AUS'}`;
+  }
+
+  function setMapVisible(on){
+    mapVisible=on;
+
+    if(on){
+      if(!map.hasLayer(ofmBase))ofmBase.addTo(map);
+      if(!map.hasLayer(ofmAero))ofmAero.addTo(map);
+      mapToggle.textContent='VFR MAP: AN';
+      mapToggle.classList.add('active');
+    }else{
+      if(map.hasLayer(ofmBase))map.removeLayer(ofmBase);
+      if(map.hasLayer(ofmAero))map.removeLayer(ofmAero);
+      mapToggle.textContent='VFR MAP: AUS';
+      mapToggle.classList.remove('active');
+    }
+
+    setTimeout(()=>map.invalidateSize(false),50);
+    render();
   }
 
   async function load(){
@@ -393,10 +559,12 @@ button:focus,select:focus{outline:2px solid var(--bright);outline-offset:2px}
     try{
       const R=Number(radiusSel.value);
       const res=await fetch(`/.netlify/functions/aircraft?radius=${encodeURIComponent(R)}`,{cache:'no-store'});
-      if(!res.ok) throw new Error('HTTP '+res.status);
+      if(!res.ok)throw new Error('HTTP '+res.status);
       const data=await res.json();
+
       raw=Array.isArray(data.ac)?data.ac:[];
       updated=Date.now();
+
       $('state').textContent='● LIVE';
       $('state').className='live';
       render();
@@ -410,21 +578,35 @@ button:focus,select:focus{outline:2px solid var(--bright);outline-offset:2px}
   }
 
   radiusSel.addEventListener('change',()=>{
-    // Trail bleibt erhalten, wird aber korrekt neu projiziert.
+    fitRadarRange();
+    drawRadarGrid();
     render();
     load();
   });
+
   altSel.addEventListener('change',render);
   groundSel.addEventListener('change',render);
+
+  mapToggle.addEventListener('click',()=>{
+    setMapVisible(!mapVisible);
+  });
+
   $('refresh').addEventListener('click',load);
 
   setInterval(load,10000);
   setInterval(()=>{
-    $('clock').textContent=new Date().toLocaleTimeString('de-DE',{hour12:false,timeZone:'UTC'})+' UTC';
-    $('age').textContent=updated?Math.floor((Date.now()-updated)/1000)+' s alt':'keine Daten';
+    $('clock').textContent=
+      new Date().toLocaleTimeString('de-DE',{hour12:false,timeZone:'UTC'})+' UTC';
+    $('age').textContent=
+      updated?Math.floor((Date.now()-updated)/1000)+' s alt':'keine Daten';
   },1000);
 
-  $('clock').textContent=new Date().toLocaleTimeString('de-DE',{hour12:false,timeZone:'UTC'})+' UTC';
+  $('clock').textContent=
+    new Date().toLocaleTimeString('de-DE',{hour12:false,timeZone:'UTC'})+' UTC';
+
+  fitRadarRange();
+  drawRadarGrid();
+  setMapVisible(false);
   load();
 })();
 </script>
