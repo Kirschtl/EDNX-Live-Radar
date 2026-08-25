@@ -1,11 +1,19 @@
-# EDNX Live Radar v7.5
+# EDNX Live Radar v7.6
 
-Wesentliche Änderung:
-- RADAR und OPENSTREETMAP sind jetzt zwei getrennte Render-Engines.
-- RADAR benutzt weiterhin die lokale km-basierte SVG-Projektion.
-- OPENSTREETMAP wird vollständig von Leaflet/Web-Mercator gerendert.
-- In OSM werden nun auch Flugzeuge, Tracks, EDNX und openAIP-Lufträume direkt über ihre geografischen Koordinaten von Leaflet positioniert.
-- Das bisherige problematische Übereinanderlegen von OSM-Tiles und dem Radar-SVG entfällt vollständig.
+OpenStreetMap komplett neu umgesetzt, ohne Leaflet.
+
+Warum:
+- Die vorherigen Leaflet-Versionen zeigten auf dem Zielbrowser falsch/fragmentiert positionierte Tiles.
+- Zusätzlich brach die OSM-Overlay-Logik durch eine falsche Trail-Variable ab.
+
+v7.6:
+- RADAR bleibt die stabile SVG-Ansicht.
+- OPENSTREETMAP nutzt einen eigenen Slippy-Map-Renderer:
+  - OSM-Kacheln werden anhand der offiziellen Web-Mercator-Tile-Mathematik selbst positioniert.
+  - Keine Leaflet-CSS-/Layout-Abhängigkeit.
+- Flugzeuge, Trails, EDNX und openAIP-Lufträume werden im OSM-Modus mit exakt derselben Web-Mercator-Projektion gerendert.
+- Damit liegen München, EDNX, Traffic und Airspaces in derselben geografischen Projektion.
 - SCREEN: RADAR / OPENSTREETMAP
 - AIRSPACE: AN / AUS
-- Range und übrige Filter bleiben erhalten.
+- Range 10/15/20/30/50/75/100 km
+- Hubschrauber-Symbole bleiben erhalten.
