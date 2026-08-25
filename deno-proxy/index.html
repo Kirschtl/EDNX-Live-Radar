@@ -1,0 +1,1033 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>EDNX Live Radar v8.3</title>
+<style>
+:root{
+  --bg:#010301;
+  --panel:#020702;
+  --grid:#173d20;
+  --grid2:#2f6a3a;
+  --text:#9cff81;
+  --muted:#6f9f70;
+  --bright:#b5ff98;
+  --error:#ff7777;
+  --ctr:#ff69b4;
+  --rmz:#4aa8ff;
+  --airspace:#8d8d8d;
+}
+*{box-sizing:border-box}
+html,body{
+  margin:0;height:100%;
+  background:var(--bg);
+  color:var(--text);
+  font-family:Consolas,Menlo,Monaco,"Courier New",monospace;
+  overflow:hidden;
+}
+body{display:flex;flex-direction:column;padding:9px 14px 10px}
+header{
+  height:72px;flex:0 0 72px;
+  display:flex;align-items:center;justify-content:space-between;
+  padding:0 22px;
+  border-bottom:1px solid var(--grid);
+}
+.title{font-size:29px;letter-spacing:.08em;font-weight:700}
+.sub{font-size:13px;color:var(--muted);margin-top:4px}
+.status{text-align:right;font-size:14px;line-height:1.5;color:var(--muted)}
+.live{color:var(--bright)}
+.err{color:var(--error)}
+main{
+  flex:1;min-height:0;
+  display:grid;
+  grid-template-columns:minmax(0,1fr) 190px;
+}
+#radarWrap{
+  position:relative;
+  min-width:0;min-height:0;
+  overflow:hidden;
+  background:#010301;
+}
+#radar{width:100%;height:100%;display:block}
+
+#mapView{
+  position:absolute;
+  inset:0;
+  z-index:3;
+  display:none;
+  overflow:hidden;
+  background:#0a0d0a;
+}
+#mapTiles{
+  position:absolute;
+  inset:0;
+  overflow:hidden;
+  background:#0a0d0a;
+}
+#mapTiles img{
+  position:absolute;
+  width:256px;
+  height:256px;
+  max-width:none;
+  user-select:none;
+  pointer-events:none;
+  filter:brightness(.48) saturate(.55) contrast(1.08);
+}
+#mapOverlay{
+  position:absolute;
+  inset:0;
+  width:100%;
+  height:100%;
+  z-index:2;
+  pointer-events:none;
+}
+#mapAttribution{
+  position:absolute;
+  right:6px;
+  bottom:4px;
+  z-index:4;
+  font-size:10px;
+  color:#7fa283;
+  background:rgba(0,0,0,.58);
+  padding:2px 5px;
+}
+
+aside{
+  border-left:1px solid var(--grid);
+  background:#010401;
+  padding:8px 8px;
+  overflow:auto;
+}
+aside h2{
+  font-size:10px;letter-spacing:.06em;
+  color:var(--muted);margin:0 0 5px;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis
+}
+.flight{
+  display:grid;
+  grid-template-columns:20px minmax(0,1fr);
+  gap:5px;
+  padding:6px 0;
+  border-top:1px solid #113018;
+}
+.flight:first-of-type{border-top:0}
+.smallIcon{width:19px;height:19px;display:block}
+.call{font-size:13px;font-weight:700;color:var(--bright);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.meta{font-size:9px;color:#81ae84;line-height:1.3;margin-top:2px}
+footer{
+  height:44px;min-height:44px;flex:0 0 44px;
+  display:flex;align-items:center;justify-content:space-between;
+  gap:0;flex-wrap:nowrap;
+  padding:4px 16px;
+  overflow:hidden;
+  border-top:1px solid var(--grid);
+}
+.controls{display:flex;gap:6px;flex-wrap:nowrap;align-items:center;min-width:0;width:100%}
+label{font-size:9px;color:var(--muted);display:flex;align-items:center;gap:3px;white-space:nowrap}
+select,button{
+  height:26px;
+  background:#061007;
+  color:var(--bright);
+  border:1px solid var(--grid2);
+  border-radius:4px;
+  padding:0 5px;
+  font:inherit;
+  font-size:9px;
+}
+button{cursor:pointer}
+button:focus,select:focus{outline:2px solid var(--bright);outline-offset:2px}
+#msg{font-size:7px;color:#527a57;line-height:1.1;margin-top:2px;max-width:720px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+@media(max-width:900px){
+  main{grid-template-columns:1fr}
+  aside{display:none}
+  header{height:64px;flex-basis:64px;padding:0 12px}
+  .title{font-size:20px}
+  footer{min-height:70px;padding:8px 10px}
+  #msg{display:none}
+}
+</style>
+</head>
+<body>
+<header>
+  <div>
+    <div class="title">EDNX LIVE RADAR</div>
+    <div class="sub">OBERSCHLEISSHEIM · ADS-B LIVE</div>
+    <div id="msg">Quelle: ADSB.lol · Aktualisierung alle 10 Sekunden · adaptive Pause bei Serverlimit</div>
+  </div>
+  <div class="status">
+    <span id="state">● VERBINDE…</span><br>
+    <span id="clock">--:--:-- UTC</span> · <span id="age">keine Daten</span>
+  </div>
+</header>
+
+<main>
+  <div id="radarWrap">
+    <div id="mapView" aria-label="OpenStreetMap Ansicht">
+      <div id="mapTiles"></div>
+      <svg id="mapOverlay"></svg>
+      <div id="mapAttribution">© OpenStreetMap contributors · Airspace © openAIP</div>
+    </div>
+    <svg id="radar" viewBox="0 30 1130 700" role="img" aria-label="EDNX Live Radar">
+      <!-- rechteckige Radarfläche -->
+      <rect id="radarFrame" x="0" y="30" width="1130" height="700" fill="none" stroke="#2f6a3a" stroke-width="1.2"/>
+
+      <!-- Raster -->
+      <g id="grid" fill="none" stroke="#173d20" stroke-width="1">
+        <line id="gridH1" x1="0" y1="205" x2="1130" y2="205"/>
+        <line id="gridH2" x1="0" y1="380" x2="1130" y2="380"/>
+        <line id="gridH3" x1="0" y1="555" x2="1130" y2="555"/>
+        <line id="gridV1" x1="282.5" y1="30" x2="282.5" y2="730"/>
+        <line id="gridV2" x1="565" y1="30" x2="565" y2="730"/>
+        <line id="gridV3" x1="847.5" y1="30" x2="847.5" y2="730"/>
+      </g>
+
+      <!-- Hauptachsen -->
+      <g fill="none" stroke="#285b33" stroke-width="1.2">
+        <line id="axisV" x1="565" y1="30" x2="565" y2="730"/>
+        <line id="axisH" x1="0" y1="380" x2="1130" y2="380"/>
+      </g>
+
+      <g fill="#5f8d66" font-size="14">
+        <text id="compassN" x="555" y="48">N</text>
+        <text id="compassE" x="1110" y="385">E</text>
+        <text id="compassS" x="555" y="720">S</text>
+        <text id="compassW" x="10" y="385">W</text>
+
+        <text id="topRange" x="84" y="54">±30 km</text>
+        <text id="gridNorth" x="575" y="55">N +30</text>
+        <text id="gridSouth" x="575" y="718">S -30</text>
+        <text id="gridWest" x="62" y="370">W -30</text>
+        <text id="gridEast" x="1000" y="370">E +30</text>
+      </g>
+
+      <!-- EDNX Zentrum -->
+      <g>
+        <circle cx="565" cy="380" r="5" fill="#b5ff98"/>
+        <circle cx="565" cy="380" r="12" fill="none" stroke="#4d8155"/>
+        <text x="583" y="375" fill="#b5ff98" font-size="15">EDNX</text>
+        <text x="583" y="392" fill="#668c6a" font-size="11">1,594 FT MSL</text>
+      </g>
+
+      <defs>
+        <clipPath id="radarClip">
+          <rect id="radarClipRect" x="0" y="30" width="1130" height="700"/>
+        </clipPath>
+      </defs>
+      <g id="airspaces" clip-path="url(#radarClip)"></g>
+      <g id="airspaceLabels" clip-path="url(#radarClip)"></g>
+      <g id="trails" clip-path="url(#radarClip)"></g>
+      <g id="planes" clip-path="url(#radarClip)"></g>
+    </svg>
+  </div>
+
+  <aside>
+    <h2 id="listTitle">AIRCRAFT ≤ 5.000 FT · 30 KM</h2>
+    <div id="list"></div>
+  </aside>
+</main>
+
+<footer>
+  <div class="controls">
+    <label>SCREEN
+      <select id="screenMode">
+        <option value="radar" selected>RADAR</option>
+        <option value="map">OPENSTREETMAP</option>
+      </select>
+    </label>
+    <label>RADIUS
+      <select id="radius">
+        <option value="5">5 km</option>
+        <option value="10">10 km</option>
+        <option value="15">15 km</option>
+        <option value="20">20 km</option>
+        <option value="30" selected>30 km</option>
+        <option value="50">50 km</option>
+        <option value="75">75 km</option>
+        <option value="100">100 km</option>
+      </select>
+    </label>
+    <label>MAX HÖHE
+      <select id="alt">
+        <option value="2500">2.500 ft</option>
+        <option value="5000" selected>5.000 ft</option>
+        <option value="7500">7.500 ft</option>
+        <option value="10000">10.000 ft</option>
+        <option value="99999">ALLE</option>
+      </select>
+    </label>
+    <label>GROUND EDNX
+      <select id="ground">
+        <option value="on" selected>AN</option>
+        <option value="off">AUS</option>
+      </select>
+    </label>
+    <label>AIRSPACE
+      <select id="airspaceMode">
+        <option value="off">AUS</option>
+        <option value="all" selected>AN</option>
+      </select>
+    </label>
+    <button id="refresh" type="button">AKTUALISIEREN</button>
+  </div>
+</footer>
+
+<script>
+(() => {
+  const CENTER={lat:48.239166,lon:11.559334};
+  const EDNX_GROUND_RADIUS_KM=1.8;
+  const $=id=>document.getElementById(id);
+  const planes=$('planes'), trails=$('trails'), list=$('list');
+  const radarEl=$('radar'), radarWrap=$('radarWrap');
+  const airspacesG=$('airspaces'), airspaceLabelsG=$('airspaceLabels');
+  const radiusSel=$('radius'), altSel=$('alt'), groundSel=$('ground'), airspaceMode=$('airspaceMode');
+  const screenMode=$('screenMode');
+  const mapView=$('mapView'), mapTiles=$('mapTiles'), mapOverlay=$('mapOverlay');
+
+  let raw=[], updated=0, busy=false, lastLoadStarted=0, nextAllowedLoad=0;
+  let airspaceItems=[], airspaceBusy=false;
+  let mapState={zoom:11,centerWorldX:0,centerWorldY:0,width:0,height:0,scale:1};
+  const targetCache=new Map();
+  const TARGET_COAST_MS=30000;
+
+  // Trail-Historie wird in GEO-Koordinaten gespeichert.
+  // Dadurch bleibt sie bei Range-Änderungen korrekt und wird neu projiziert.
+  const history=new Map();
+
+  const rd=d=>d*Math.PI/180;
+  const dg=r=>r*180/Math.PI;
+  const fmt=n=>Number(n).toLocaleString('de-DE');
+
+  function distanceKm(lat1,lon1,lat2,lon2){
+    const R=6371, dLat=rd(lat2-lat1), dLon=rd(lon2-lon1);
+    const a=Math.sin(dLat/2)**2 + Math.cos(rd(lat1))*Math.cos(rd(lat2))*Math.sin(dLon/2)**2;
+    return 2*R*Math.asin(Math.sqrt(a));
+  }
+
+  function bearing(lat1,lon1,lat2,lon2){
+    const y=Math.sin(rd(lon2-lon1))*Math.cos(rd(lat2));
+    const x=Math.cos(rd(lat1))*Math.sin(rd(lat2)) -
+            Math.sin(rd(lat1))*Math.cos(rd(lat2))*Math.cos(rd(lon2-lon1));
+    return (dg(Math.atan2(y,x))+360)%360;
+  }
+
+  function altitude(ac){
+    if(ac.alt_baro==='ground') return 0;
+    const n=Number(ac.alt_baro);
+    return Number.isFinite(n)?n:null;
+  }
+
+  function callsign(ac){return (ac.flight||'').trim()}
+  function reg(ac){return (ac.r||'').trim()}
+  function name(ac){return callsign(ac)||reg(ac)||(ac.hex||'').toUpperCase()||'UNBEKANNT'}
+  function type(ac){return (ac.t||'').trim()||'—'}
+
+  function hdg(ac){
+    const v=[ac.track,ac.true_heading,ac.mag_heading].map(Number).find(Number.isFinite);
+    return Number.isFinite(v)?((v%360)+360)%360:null;
+  }
+
+  function speed(ac){
+    const n=Number(ac.gs);
+    return Number.isFinite(n)?Math.round(n):null;
+  }
+
+  function key(ac){
+    return (ac.hex||reg(ac)||callsign(ac)||Math.random().toString(36)).trim();
+  }
+
+  function esc(s){
+    return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  }
+
+  function isAllowedGround(ac,d){
+    const a=altitude(ac);
+    if(a!==0) return true;
+    if(groundSel.value==='off') return false;
+    return d<=EDNX_GROUND_RADIUS_KM;
+  }
+
+  function dataLine(ac){
+    const r=reg(ac), c=callsign(ac), a=altitude(ac), s=speed(ac), h=hdg(ac);
+    const first=c ? (r ? `${r} · ${c}` : c) : (r || name(ac));
+    const second=`${a===null?'—':fmt(a)+' ft'} · ${s===null?'—':s+' kt'} · ${h===null?'—':String(Math.round(h)).padStart(3,'0')+'°'}`;
+    return {first,second};
+  }
+
+  function rememberPosition(ac){
+    const k=key(ac), now=Date.now();
+    let arr=history.get(k)||[];
+    arr.push({lat:Number(ac.lat),lon:Number(ac.lon),t:now});
+    arr=arr.filter(p=>now-p.t<120000);
+    if(arr.length>18) arr=arr.slice(-18);
+    history.set(k,arr);
+    return arr;
+  }
+
+  // lokale Ost/Nord-Projektion in km, gut für 20–100 km Radius
+  function project(lat,lon,maxKm){
+    // Lokale equirektangulare Projektion um EDNX.
+    // Wichtig: EAST und NORTH benutzen denselben Pixel/km-Maßstab,
+    // damit GeoJSON-Polygone nicht horizontal gestreckt werden.
+    const meanLat=rd((lat+CENTER.lat)/2);
+    const north=(lat-CENTER.lat)*111.32;
+    const east=(lon-CENTER.lon)*111.32*Math.cos(meanLat);
+
+    const pixelsPerKm=350/maxKm; // vertikale Halbausdehnung bestimmt den Maßstab
+    const x=565 + east*pixelsPerKm;
+    const y=380 - north*pixelsPerKm;
+    return {x,y};
+  }
+
+  function setupRadarGeometry(){
+    const r=radarWrap.getBoundingClientRect();
+    if(!r.width||!r.height) return;
+    const viewH=700;
+    const viewW=viewH*(r.width/r.height);
+    const left=565-viewW/2;
+    const right=565+viewW/2;
+    radarEl.setAttribute('viewBox',`${left} 30 ${viewW} ${viewH}`);
+    $('radarFrame').setAttribute('x',left);
+    $('radarFrame').setAttribute('width',viewW);
+    $('radarClipRect').setAttribute('x',left);
+    $('radarClipRect').setAttribute('width',viewW);
+    for(const id of ['gridH1','gridH2','gridH3','axisH']){
+      $(id).setAttribute('x1',left); $(id).setAttribute('x2',right);
+    }
+    const xs=[left+viewW/4,565,right-viewW/4];
+    ['gridV1','gridV2','gridV3'].forEach((id,i)=>{
+      $(id).setAttribute('x1',xs[i]); $(id).setAttribute('x2',xs[i]);
+    });
+    $('compassE').setAttribute('x',right-18);
+    $('compassW').setAttribute('x',left+8);
+    $('topRange').setAttribute('x',left+35);
+    $('gridWest').setAttribute('x',left+18);
+    $('gridEast').setAttribute('x',right-80);
+  }
+
+
+
+  function mercatorWorld(lat,lon,z){
+    const scale=256*Math.pow(2,z);
+    const x=(lon+180)/360*scale;
+    const clamped=Math.max(-85.05112878,Math.min(85.05112878,lat));
+    const s=Math.sin(rd(clamped));
+    const y=(0.5-Math.log((1+s)/(1-s))/(4*Math.PI))*scale;
+    return {x,y};
+  }
+
+  function chooseMapZoom(width,height,rangeKm){
+    const dLat=rangeKm/111.32;
+    const dLon=rangeKm/(111.32*Math.cos(rd(CENTER.lat)));
+    const pad=24;
+
+    for(let z=18;z>=4;z--){
+      const nw=mercatorWorld(CENTER.lat+dLat,CENTER.lon-dLon,z);
+      const se=mercatorWorld(CENTER.lat-dLat,CENTER.lon+dLon,z);
+      const bw=Math.abs(se.x-nw.x);
+      const bh=Math.abs(se.y-nw.y);
+      if(bw<=width-pad*2 && bh<=height-pad*2) return z;
+    }
+    return 4;
+  }
+
+  function setupMapGeometry(){
+    if(screenMode.value!=='map') return;
+    const r=mapView.getBoundingClientRect();
+    const width=Math.max(1,Math.round(r.width));
+    const height=Math.max(1,Math.round(r.height));
+    const range=Number(radiusSel.value);
+    const zoom=chooseMapZoom(width,height,range);
+    const c=mercatorWorld(CENTER.lat,CENTER.lon,zoom);
+    const oneKmNorth=mercatorWorld(CENTER.lat+1/111.32,CENTER.lon,zoom);
+    const nativePixelsPerKm=Math.abs(oneKmNorth.y-c.y)||1;
+    const desiredPixelsPerKm=height/(2*range);
+    const scale=desiredPixelsPerKm/nativePixelsPerKm;
+    mapState={zoom,centerWorldX:c.x,centerWorldY:c.y,width,height,scale};
+
+    mapOverlay.setAttribute('viewBox',`0 0 ${width} ${height}`);
+    mapOverlay.setAttribute('width',width);
+    mapOverlay.setAttribute('height',height);
+
+    renderMapTiles();
+  }
+
+  function mapProject(lat,lon){
+    const p=mercatorWorld(Number(lat),Number(lon),mapState.zoom);
+    return {
+      x:(p.x-mapState.centerWorldX)*mapState.scale+mapState.width/2,
+      y:(p.y-mapState.centerWorldY)*mapState.scale+mapState.height/2
+    };
+  }
+
+  function renderMapTiles(){
+    const {zoom,centerWorldX,centerWorldY,width,height,scale}=mapState;
+    if(!width||!height) return;
+
+    mapTiles.innerHTML='';
+    const leftWorld=centerWorldX-width/(2*scale);
+    const topWorld=centerWorldY-height/(2*scale);
+    const firstX=Math.floor(leftWorld/256);
+    const lastX=Math.floor((leftWorld+width/scale)/256);
+    const firstY=Math.floor(topWorld/256);
+    const lastY=Math.floor((topWorld+height/scale)/256);
+    const n=Math.pow(2,zoom);
+
+    for(let ty=firstY;ty<=lastY;ty++){
+      if(ty<0||ty>=n) continue;
+      for(let tx=firstX;tx<=lastX;tx++){
+        const wrappedX=((tx%n)+n)%n;
+        const img=document.createElement('img');
+        img.alt='';
+        img.draggable=false;
+        img.src=`https://tile.openstreetmap.org/${zoom}/${wrappedX}/${ty}.png`;
+        img.style.width=`${256*scale}px`;
+        img.style.height=`${256*scale}px`;
+        img.style.left=`${(tx*256-leftWorld)*scale}px`;
+        img.style.top=`${(ty*256-topWorld)*scale}px`;
+        let retried=false;
+        img.addEventListener('error',()=>{
+          if(retried) return;
+          retried=true;
+          setTimeout(()=>{ img.src=`https://tile.openstreetmap.org/${zoom}/${wrappedX}/${ty}.png`; },500);
+        });
+        mapTiles.appendChild(img);
+      }
+    }
+  }
+
+  function mapPathForGeometry(geom){
+    if(!geom||!geom.type||!Array.isArray(geom.coordinates)) return [];
+    const polys=geom.type==='Polygon'?[geom.coordinates]:
+                geom.type==='MultiPolygon'?geom.coordinates:[];
+    const paths=[];
+    for(const poly of polys){
+      for(const ring of poly){
+        if(!Array.isArray(ring)||ring.length<2) continue;
+        const pts=ring.map(c=>mapProject(c[1],c[0]));
+        paths.push(pts);
+      }
+    }
+    return paths;
+  }
+
+  function renderMapAirspaces(){
+    if(screenMode.value!=='map') return;
+    const old=mapOverlay.querySelector('#mapAirspaces');
+    if(old) old.remove();
+
+    const g=svgEl('g',{id:'mapAirspaces'});
+    mapOverlay.insertBefore(g,mapOverlay.firstChild);
+
+    if(airspaceMode.value==='off') return;
+
+    for(const item of airspaceItems){
+      const geom=geometryOf(item);
+      const cls=classifyAirspace(item);
+      const color=cls==='rmz'?'#4aa8ff':cls==='ctr'?'#ff69b4':'#8d8d8d';
+      const width=cls==='rmz'||cls==='ctr'?2:1;
+      const dash=cls==='rmz'?'7 5':cls==='ctr'?'':'4 6';
+
+      for(const pts of mapPathForGeometry(geom)){
+        const pl=svgEl('polyline',{
+          points:pts.map(p=>`${p.x},${p.y}`).join(' '),
+          fill:'none',
+          stroke:color,
+          'stroke-width':width,
+          opacity:cls==='rmz'||cls==='ctr'?.95:.55,
+          'stroke-linecap':'round',
+          'stroke-linejoin':'round'
+        });
+        if(dash) pl.setAttribute('stroke-dasharray',dash);
+        g.appendChild(pl);
+      }
+    }
+  }
+
+  function renderMap(){
+    if(screenMode.value!=='map') return;
+    setupMapGeometry();
+    mapOverlay.innerHTML='';
+    renderMapAirspaces();
+
+    const maxKm=Number(radiusSel.value);
+    const maxAlt=Number(altSel.value);
+
+    // EDNX
+    const c=mapProject(CENTER.lat,CENTER.lon);
+    const ednx=svgEl('g');
+    ednx.appendChild(svgEl('circle',{cx:c.x,cy:c.y,r:5,fill:'#b5ff98'}));
+    ednx.appendChild(svgEl('circle',{cx:c.x,cy:c.y,r:11,fill:'none',stroke:'#4d8155'}));
+    const et=svgEl('text',{x:c.x+15,y:c.y-4,fill:'#b5ff98','font-size':14});
+    et.textContent='EDNX';
+    ednx.appendChild(et);
+    mapOverlay.appendChild(ednx);
+
+    const visible=raw.map(ac=>{
+      if(!Number.isFinite(Number(ac.lat))||!Number.isFinite(Number(ac.lon))) return null;
+      const a=altitude(ac);
+      if(a===null||a>maxAlt) return null;
+      const d=distanceKm(CENTER.lat,CENTER.lon,Number(ac.lat),Number(ac.lon));
+      if(d>maxKm) return null;
+      if(!isAllowedGround(ac,d)) return null;
+      return {...ac,_alt:a,_dist:d,_bear:bearing(CENTER.lat,CENTER.lon,Number(ac.lat),Number(ac.lon))};
+    }).filter(Boolean);
+
+    // Die Seitenliste in der Kartenansicht immer aus genau demselben
+    // Radius-/Höhenfilter wie die Kartensymbole aufbauen.
+    list.innerHTML='';
+
+    for(const ac of visible){
+      const p=mapProject(Number(ac.lat),Number(ac.lon));
+      const heading=hdg(ac)??0;
+      const hist=history.get(key(ac))||[];
+
+      if(hist.length>1){
+        const pts=hist.map(h=>mapProject(h.lat,h.lon));
+        const tr=svgEl('polyline',{
+          points:pts.map(q=>`${q.x},${q.y}`).join(' '),
+          fill:'none',stroke:'#6fae70','stroke-width':1.2,
+          'stroke-dasharray':'2 5',opacity:.68
+        });
+        mapOverlay.appendChild(tr);
+      }
+
+      const g=svgEl('g',{transform:`translate(${p.x} ${p.y}) rotate(${heading})`});
+      const path=svgEl('path',{
+        d:aircraftSvgPath(ac,false),
+        fill:'none',stroke:'#9cff81','stroke-width':1.25,
+        'stroke-linejoin':'round','stroke-linecap':'round'
+      });
+      g.appendChild(path);
+      mapOverlay.appendChild(g);
+
+      const dl=dataLine(ac);
+      const tx=svgEl('text',{x:p.x+14,y:p.y-8,'font-size':11.5});
+      const t1=svgEl('tspan',{x:p.x+14,fill:'#b5ff98'});
+      t1.textContent=dl.first;
+      const t2=svgEl('tspan',{x:p.x+14,dy:14,fill:'#7ea77f'});
+      t2.textContent=dl.second;
+      tx.appendChild(t1); tx.appendChild(t2);
+      mapOverlay.appendChild(tx);
+
+      const div=document.createElement('div');
+      div.className='flight';
+      const cs=callsign(ac), registration=reg(ac);
+      const top=cs||registration||name(ac);
+      const secondary=(cs&&registration)?registration:(type(ac)!=='—'?type(ac):'');
+      div.innerHTML=`
+        <svg class="smallIcon" viewBox="-12 -12 24 24" aria-hidden="true">
+          <path d="${aircraftSvgPath(ac,true)}"
+            fill="none" stroke="#9cff81" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+        <div>
+          <div class="call">${esc(top)}</div>
+          <div class="meta">${secondary?esc(secondary)+' · ':''}${esc(type(ac))}<br>
+          ${ac._alt===0?'GROUND':fmt(ac._alt)+' ft'} · ${speed(ac)===null?'—':speed(ac)+' kt'} · ${hdg(ac)===null?'—':String(Math.round(hdg(ac))).padStart(3,'0')+'°'}<br>
+          ${ac._dist.toFixed(1)} km · ${Math.round(ac._bear)}°</div>
+        </div>`;
+      list.appendChild(div);
+    }
+
+    $('listTitle').textContent=`AIRCRAFT ≤ ${maxAlt>90000?'ALLE':fmt(maxAlt)+' FT'} · ${maxKm} KM · ${visible.length}`;
+    $('msg').textContent=raw.length
+      ? `${visible.length} angezeigt · ${raw.length} Rohziele · Trail 2 min · Ground nur EDNX · Airspace ${airspaceMode.options[airspaceMode.selectedIndex].text}`
+      : 'Keine Ziele empfangen';
+  }
+
+  function applyScreenMode(){
+    const isMap=screenMode.value==='map';
+    mapView.style.display=isMap?'block':'none';
+    $('radar').style.display=isMap?'none':'block';
+    if(isMap) renderMap();
+    else render();
+  }
+
+  function svgEl(name, attrs={}){
+    const el=document.createElementNS('http://www.w3.org/2000/svg',name);
+    Object.entries(attrs).forEach(([k,v])=>el.setAttribute(k,String(v)));
+    return el;
+  }
+
+  function airspaceName(item){
+    return String(item?.name || item?.properties?.name || '').trim();
+  }
+
+  function classifyAirspace(item){
+    const n=airspaceName(item).toUpperCase();
+    if(n.includes('RMZ')) return 'rmz';
+    if(n.includes('CTR')) return 'ctr';
+    return 'other';
+  }
+
+  function isLocalDesiredAirspace(item){
+    const n=airspaceName(item).toUpperCase()
+      .replaceAll('Ü','UE')
+      .replaceAll('Ö','OE')
+      .replaceAll('Ä','AE')
+      .replaceAll('ß','SS');
+
+    const cls=classifyAirspace(item);
+
+    if(cls==='rmz'){
+      return n.includes('RMZ EDNX')
+        || n.includes('OBERSCHLEISSHEIM')
+        || n.includes('SCHLEISSHEIM')
+        || n.includes('EDNX');
+    }
+
+    if(cls==='ctr'){
+      return n.includes('CTR MUENCHEN')
+        || n.includes('MUENCHEN')
+        || n.includes('MUNICH')
+        || n.includes('EDDM')
+        || n.includes('CTR SEKTOR EDNX')
+        || n.includes('EDNX');
+    }
+
+    return false;
+  }
+
+  function geometryOf(item){
+    return item?.geometry || item?.properties?.geometry || null;
+  }
+
+  function ringsFromGeometry(geom){
+    if(!geom || !geom.type || !Array.isArray(geom.coordinates)) return [];
+    if(geom.type==='Polygon') return geom.coordinates;
+    if(geom.type==='MultiPolygon') return geom.coordinates.flat();
+    return [];
+  }
+
+  function projectLonLat(lon,lat,maxKm){
+    return project(Number(lat),Number(lon),maxKm);
+  }
+
+  function renderAirspaces(){
+    airspacesG.innerHTML='';
+    airspaceLabelsG.innerHTML='';
+    const mode=airspaceMode.value;
+    if(mode==='off') return;
+
+    const maxKm=Number(radiusSel.value);
+    const shown = mode==='all' ? airspaceItems : [];
+
+    shown.forEach(item=>{
+      const geom=geometryOf(item);
+      const rings=ringsFromGeometry(geom);
+      if(!rings.length) return;
+
+      const cls=classifyAirspace(item);
+      const stroke=cls==='ctr'?'#ff69b4':(cls==='rmz'?'#4aa8ff':'#7f8b80');
+      const width=cls==='other'?1.0:1.8;
+      const dash=cls==='rmz'?'7 5':(cls==='other'?'4 6':'');
+      const opacity=cls==='other'?.45:.95;
+
+      let labelPts=[];
+
+      rings.forEach(ring=>{
+        const pts=ring
+          .filter(c=>Array.isArray(c)&&c.length>=2)
+          .map(c=>projectLonLat(c[0],c[1],maxKm));
+
+        if(pts.length<2) return;
+        labelPts.push(...pts);
+
+        const poly=svgEl('polyline',{
+          points:pts.map(p=>`${p.x},${p.y}`).join(' '),
+          fill:'none',
+          stroke,
+          'stroke-width':width,
+          opacity,
+          'stroke-linejoin':'round',
+          'stroke-linecap':'round'
+        });
+        if(dash) poly.setAttribute('stroke-dasharray',dash);
+        airspacesG.appendChild(poly);
+      });
+
+      if(labelPts.length && cls!=='other'){
+        const inView=labelPts.filter(p=>p.x>=70&&p.x<=1060&&p.y>=50&&p.y<=710);
+        if(inView.length){
+          const x=inView.reduce((s,p)=>s+p.x,0)/inView.length;
+          const y=inView.reduce((s,p)=>s+p.y,0)/inView.length;
+          const t=svgEl('text',{
+            x,y,
+            fill:stroke,
+            'font-size':11,
+            'font-weight':'700',
+            'text-anchor':'middle'
+          });
+          t.textContent=airspaceName(item);
+          airspaceLabelsG.appendChild(t);
+        }
+      }
+    });
+  }
+
+
+  const AIRSPACE_CACHE_KEY='ednx-airspaces-v1';
+  const AIRSPACE_CACHE_MAX_AGE=7*24*60*60*1000;
+
+  function readLocalAirspaceCache(){
+    try{
+      const rawCache=localStorage.getItem(AIRSPACE_CACHE_KEY);
+      if(!rawCache) return null;
+      const parsed=JSON.parse(rawCache);
+      if(!parsed || !Array.isArray(parsed.items) || !Number.isFinite(Number(parsed.savedAt))) return null;
+      return parsed;
+    }catch(_e){
+      return null;
+    }
+  }
+
+  function writeLocalAirspaceCache(items){
+    try{
+      localStorage.setItem(AIRSPACE_CACHE_KEY,JSON.stringify({
+        savedAt:Date.now(),
+        items
+      }));
+    }catch(_e){}
+  }
+
+  async function loadAirspaces(force=false){
+    if(airspaceBusy || airspaceMode.value==='off') {
+      if(screenMode.value==='map') renderMapAirspaces(); else renderAirspaces();
+      return;
+    }
+
+    const localCache=readLocalAirspaceCache();
+
+    if(localCache && !airspaceItems.length){
+      airspaceItems=localCache.items;
+      if(screenMode.value==='map') renderMapAirspaces(); else renderAirspaces();
+    }
+
+    if(!force && localCache && Date.now()-Number(localCache.savedAt)<AIRSPACE_CACHE_MAX_AGE){
+      return;
+    }
+
+    airspaceBusy=true;
+    try{
+      const res=await fetch(`/api/airspaces`);
+      if(!res.ok) throw new Error('HTTP '+res.status);
+      const data=await res.json();
+      const received=Array.isArray(data.items)?data.items:[];
+      if(received.length){
+        airspaceItems=received;
+        writeLocalAirspaceCache(received);
+      }
+      if(screenMode.value==='map') renderMapAirspaces(); else renderAirspaces();
+    }catch(e){
+      if(localCache && Array.isArray(localCache.items) && localCache.items.length){
+        airspaceItems=localCache.items;
+      }
+      if(screenMode.value==='map') renderMapAirspaces(); else renderAirspaces();
+      $('msg').textContent='Airspace-Cache aktiv · Aktualisierung fehlgeschlagen: '+e.message;
+    }finally{
+      airspaceBusy=false;
+    }
+  }
+
+  function isHelicopter(ac){
+    const cat=String(ac.category||'').toUpperCase();
+    const t=String(ac.t||'').toUpperCase().replace(/[^A-Z0-9]/g,'');
+    // ADS-B emitter category A7 = rotorcraft.
+    if(cat==='A7') return true;
+    // Fallback for common ICAO helicopter type designators.
+    return /^(R22|R44|R66|EC20|EC25|EC30|EC35|EC45|EC55|EC75|H120|H125|H130|H135|H145|H155|H160|H175|H215|H225|AS50|AS55|AS65|B06|B212|B412|B429|BK17|S76|S92|A109|A119|A139|A169|A189|NH90|UH60|CH47)$/.test(t);
+  }
+
+  function aircraftSvgPath(ac,small=false){
+    if(isHelicopter(ac)){
+      // Filigrane Draufsicht: Rotor, Rumpf, Heckausleger und Heckrotor.
+      return small
+        ? 'M-8,0 L8,0 M0,-8 L0,8 M-5,-5 L5,5 M5,-5 L-5,5 M-2,-2 C2,-3 4,-1 3,2 C2,4 0,5 -2,4 C-4,3 -4,0 -2,-2 Z M0,4 L0,10 M-3,10 L3,10 M2,8 L2,12'
+        : 'M-10,0 L10,0 M0,-10 L0,10 M-6,-6 L6,6 M6,-6 L-6,6 M-2.5,-2.5 C2.5,-3.5 5,-1 4,2.5 C3,5 0,6 -2.5,5 C-5,3.5 -5,0 -2.5,-2.5 Z M0,5 L0,13 M-4,13 L4,13 M3,10 L3,16';
+    }
+    return small
+      ? 'M0,-9 L2,-2 L9,1 L9,3 L2.5,2.5 L1.5,9 L-1.5,9 L-2.5,2.5 L-9,3 L-9,1 L-2,-2 Z'
+      : 'M0,-11 L2.2,-2.2 L10,1.5 L10,3.5 L2.8,2.7 L1.8,10 L-1.8,10 L-2.8,2.7 L-10,3.5 L-10,1.5 L-2.2,-2.2 Z';
+  }
+
+  function render(){
+    if(screenMode && screenMode.value==='map'){ renderMap(); return; }
+    setupRadarGeometry();
+    const maxKm=Number(radiusSel.value), maxAlt=Number(altSel.value);
+
+    const visible=raw.map(ac=>{
+      if(!Number.isFinite(Number(ac.lat))||!Number.isFinite(Number(ac.lon))) return null;
+      const a=altitude(ac);
+      if(a===null||a>maxAlt) return null;
+      const d=distanceKm(CENTER.lat,CENTER.lon,Number(ac.lat),Number(ac.lon));
+      if(d>maxKm) return null;
+      if(!isAllowedGround(ac,d)) return null;
+      return {...ac,_alt:a,_dist:d,_bear:bearing(CENTER.lat,CENTER.lon,Number(ac.lat),Number(ac.lon))};
+    }).filter(Boolean).sort((a,b)=>a._dist-b._dist);
+
+    planes.innerHTML='';
+    trails.innerHTML='';
+    list.innerHTML='';
+    renderAirspaces();
+
+    visible.forEach(ac=>{
+      const p=project(Number(ac.lat),Number(ac.lon),maxKm);
+      const heading=hdg(ac)??ac._bear;
+
+      const arr=history.get(key(ac))||[];
+
+      // Alte Spuren immer anhand der GEO-Koordinaten neu projizieren.
+      if(arr.length>1){
+        const pts=arr
+          .map(h=>project(h.lat,h.lon,maxKm))
+          .filter(pt=>pt.x>=50&&pt.x<=1080&&pt.y>=30&&pt.y<=730);
+
+        if(pts.length>1){
+          const pl=document.createElementNS('http://www.w3.org/2000/svg','polyline');
+          pl.setAttribute('points',pts.map(pt=>`${pt.x},${pt.y}`).join(' '));
+          pl.setAttribute('fill','none');
+          pl.setAttribute('stroke','#6fae70');
+          pl.setAttribute('stroke-width','1.2');
+          pl.setAttribute('stroke-dasharray','2 5');
+          pl.setAttribute('opacity','.68');
+          trails.appendChild(pl);
+        }
+      }
+
+      const g=document.createElementNS('http://www.w3.org/2000/svg','g');
+      g.setAttribute('transform',`translate(${p.x} ${p.y}) rotate(${heading})`);
+      g.innerHTML=`
+        <path d="${aircraftSvgPath(ac,false)}"
+              fill="none" stroke="#9cff81" stroke-width="1.25" stroke-linejoin="round" stroke-linecap="round"/>
+      `;
+      planes.appendChild(g);
+
+      const dl=dataLine(ac);
+      const tx=document.createElementNS('http://www.w3.org/2000/svg','text');
+      tx.setAttribute('x',p.x+15);
+      tx.setAttribute('y',p.y-9);
+      tx.setAttribute('font-size','11.5');
+      tx.innerHTML=`
+        <tspan x="${p.x+15}" fill="#b5ff98">${esc(dl.first)}</tspan>
+        <tspan x="${p.x+15}" dy="14" fill="#7ea77f">${esc(dl.second)}</tspan>`;
+      planes.appendChild(tx);
+
+      const div=document.createElement('div');
+      div.className='flight';
+      const c=callsign(ac), r=reg(ac);
+      const top=c||r||name(ac);
+      const secondary=(c&&r)?r:(type(ac)!=='—'?type(ac):'');
+      div.innerHTML=`
+        <svg class="smallIcon" viewBox="-12 -12 24 24" aria-hidden="true">
+          <path d="${aircraftSvgPath(ac,true)}"
+            fill="none" stroke="#9cff81" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+        <div>
+          <div class="call">${esc(top)}</div>
+          <div class="meta">${secondary?esc(secondary)+' · ':''}${esc(type(ac))}<br>
+          ${ac._alt===0?'GROUND':fmt(ac._alt)+' ft'} · ${speed(ac)===null?'—':speed(ac)+' kt'} · ${hdg(ac)===null?'—':String(Math.round(hdg(ac))).padStart(3,'0')+'°'}<br>
+          ${ac._dist.toFixed(1)} km · ${Math.round(ac._bear)}°</div>
+        </div>`;
+      list.appendChild(div);
+    });
+
+    $('listTitle').textContent=`AIRCRAFT ≤ ${maxAlt>90000?'ALLE':fmt(maxAlt)+' FT'} · ${maxKm} KM · ${visible.length}`;
+    $('topRange').textContent=`±${maxKm} km`;
+    $('gridNorth').textContent=`N +${maxKm}`;
+    $('gridSouth').textContent=`S -${maxKm}`;
+    $('gridWest').textContent=`W -${maxKm}`;
+    $('gridEast').textContent=`E +${maxKm}`;
+
+    $('msg').textContent=raw.length
+      ? `${visible.length} angezeigt · ${raw.length} Rohziele · Trail 2 min · Ground nur EDNX · Airspace ${airspaceMode.options[airspaceMode.selectedIndex].text} · Projektion 1:1`
+      : 'Keine Ziele empfangen';
+  }
+
+  async function load(force=false){
+    if(busy)return;
+    const now=Date.now();
+    // Normal alle 10 Sekunden; nach einem Serverlimit automatisch pausieren.
+    if(!force && nextAllowedLoad && now<nextAllowedLoad)return;
+    if(!force && lastLoadStarted && now-lastLoadStarted<9000)return;
+    lastLoadStarted=now;
+    busy=true;
+    $('state').textContent='● LADE…';
+    $('state').className='live';
+
+    try{
+      const R=Number(radiusSel.value);
+      const res=await fetch(`/api/aircraft?radius=${encodeURIComponent(R)}`);
+      if(!res.ok) throw new Error('HTTP '+res.status);
+      const data=await res.json();
+      const received=Array.isArray(data.ac)?data.ac:[];
+      const receivedAt=Date.now();
+      for(const ac of received){
+        const k=key(ac);
+        const previous=targetCache.get(k);
+        // Teilweise ADS-B-Datensätze mit dem letzten vollständigen Ziel zusammenführen.
+        targetCache.set(k,{ac:{...(previous?previous.ac:{}),...ac},seen:receivedAt});
+      }
+      for(const [k,item] of targetCache){
+        if(receivedAt-item.seen>TARGET_COAST_MS) targetCache.delete(k);
+      }
+      raw=[...targetCache.values()].map(item=>item.ac);
+      // Historie unabhängig von der aktuell gewählten Ansicht fortschreiben.
+      // So bleibt der Trail beim Wechsel zwischen Radar und Karte erhalten.
+      for(const ac of raw){
+        if(Number.isFinite(Number(ac.lat))&&Number.isFinite(Number(ac.lon))) rememberPosition(ac);
+      }
+      nextAllowedLoad=0;
+      updated=Date.now();
+      $('state').textContent='● LIVE';
+      $('state').className='live';
+      render();
+    }catch(e){
+      // Bei einer vorübergehenden Begrenzung die letzte gültige Anzeige behalten.
+      const temporary=/HTTP (429|502|503|504)/.test(String(e.message));
+      nextAllowedLoad=Date.now()+(temporary?30000:20000);
+      if(raw.length && temporary){
+        $('state').textContent='● LIVE';
+        $('state').className='live';
+        $('msg').textContent='Letzte Live-Daten werden angezeigt · nächste Abfrage automatisch';
+      }else{
+        $('state').textContent='● VERBINDUNGSFEHLER';
+        $('state').className='err';
+        $('msg').textContent='Fehler: '+e.message;
+      }
+    }finally{
+      busy=false;
+    }
+  }
+
+  radiusSel.addEventListener('change',()=>{
+    if(screenMode.value==='map') renderMap(); else render();
+    load(true);
+    loadAirspaces();
+  });
+  altSel.addEventListener('change',()=>screenMode.value==='map'?renderMap():render());
+  groundSel.addEventListener('change',()=>screenMode.value==='map'?renderMap():render());
+  screenMode.addEventListener('change',applyScreenMode);
+  airspaceMode.addEventListener('change',()=>{
+    if(screenMode.value==='map') renderMapAirspaces(); else renderAirspaces();
+    if(airspaceMode.value!=='off' && !airspaceItems.length) loadAirspaces();
+  });
+  $('refresh').addEventListener('click',()=>{
+    load(true);
+    loadAirspaces();
+  });
+
+  window.addEventListener('resize',()=>{ if(screenMode.value==='map') renderMap(); else render(); });
+  setInterval(()=>load(false),10000);
+  setInterval(()=>{
+    $('clock').textContent=new Date().toLocaleTimeString('de-DE',{hour12:false,timeZone:'UTC'})+' UTC';
+    $('age').textContent=updated?Math.floor((Date.now()-updated)/1000)+' s alt':'keine Daten';
+  },1000);
+
+  $('clock').textContent=new Date().toLocaleTimeString('de-DE',{hour12:false,timeZone:'UTC'})+' UTC';
+  applyScreenMode();
+  load();
+  loadAirspaces();
+})();
+</script>
+</body>
+</html>
