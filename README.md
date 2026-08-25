@@ -1,9 +1,6 @@
-# EDNX Live Radar v7.2
+# EDNX Live Radar v7.3
 
-Änderung:
-- AIRSPACE hat nur noch zwei Zustände:
-  - AUS
-  - AN
-- AN zeigt alle von openAIP gelieferten Lufträume.
-- Der bisherige separate Modus EDDM CTR + EDNX RMZ wurde entfernt.
-- Sonst unverändert gegenüber v7.1.
+- Range erweitert um 10 km und 15 km.
+- Hubschrauber bekommen ein eigenes filigranes Draufsicht-Symbol, sowohl im Radar als auch in der Seitenliste.
+- Erkennung primär über ADS-B Kategorie A7 (Rotorcraft), zusätzlich über verbreitete ICAO-Hubschraubertypen.
+- Sonst unverändert gegenüber v7.2.
