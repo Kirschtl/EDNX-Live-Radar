@@ -28,7 +28,7 @@ export default async (request) => {
     const response = await fetch(upstream, {
       headers: {
         "x-openaip-api-key": apiKey,
-        "User-Agent": "EDNX-Live-Radar/7.3"
+        "User-Agent": "EDNX-Live-Radar/7.4"
       }
     });
 

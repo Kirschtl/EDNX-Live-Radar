@@ -3,7 +3,9 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>EDNX Live Radar v7.3</title>
+<title>EDNX Live Radar v7.4</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+ integrity="sha256-p4NxAoJBhIINfQ3ynZsoMZ7SUKMZeklaodGmR3fvb4A=" crossorigin=""/>
 <style>
 :root{
   --bg:#010301;
@@ -49,7 +51,30 @@ main{
   overflow:hidden;
   background:#010301;
 }
-#radar{width:100%;height:100%;display:block}
+#osmMap{
+  position:absolute;
+  inset:0;
+  z-index:0;
+  display:none;
+  background:#010301;
+}
+#radar{
+  position:absolute;
+  inset:0;
+  z-index:2;
+  width:100%;
+  height:100%;
+  display:block;
+  pointer-events:none;
+}
+.leaflet-container{background:#010301}
+.leaflet-control-attribution{
+  background:rgba(0,0,0,.72)!important;
+  color:#6f9f70!important;
+  font-size:10px!important;
+}
+.leaflet-control-attribution a{color:#9cff81!important}
+.osm-dark{filter:brightness(.45) saturate(.55) contrast(1.1)}
 aside{
   border-left:1px solid var(--grid);
   background:#010401;
@@ -117,9 +142,10 @@ button:focus,select:focus{outline:2px solid var(--bright);outline-offset:2px}
 
 <main>
   <div id="radarWrap">
+    <div id="osmMap" aria-hidden="true"></div>
     <svg id="radar" viewBox="0 0 1200 780" role="img" aria-label="EDNX Live Radar">
       <!-- rechteckige Radarfläche -->
-      <rect x="50" y="30" width="1030" height="700" fill="none" stroke="#2f6a3a" stroke-width="1.2"/>
+      <rect id="radarFrame" x="50" y="30" width="1030" height="700" fill="none" stroke="#2f6a3a" stroke-width="1.2"/>
 
       <!-- Raster -->
       <g id="grid" fill="none" stroke="#173d20" stroke-width="1">
@@ -132,12 +158,12 @@ button:focus,select:focus{outline:2px solid var(--bright);outline-offset:2px}
       </g>
 
       <!-- Hauptachsen -->
-      <g fill="none" stroke="#285b33" stroke-width="1.2">
+      <g id="axes" fill="none" stroke="#285b33" stroke-width="1.2">
         <line x1="565" y1="30" x2="565" y2="730"/>
         <line x1="50" y1="380" x2="1080" y2="380"/>
       </g>
 
-      <g fill="#5f8d66" font-size="14">
+      <g id="radarLabels" fill="#5f8d66" font-size="14">
         <text x="555" y="22">N</text>
         <text x="1088" y="385">E</text>
         <text x="555" y="750">S</text>
@@ -178,6 +204,12 @@ button:focus,select:focus{outline:2px solid var(--bright);outline-offset:2px}
 
 <footer>
   <div class="controls">
+    <label>SCREEN
+      <select id="screenMode">
+        <option value="radar" selected>RADAR</option>
+        <option value="osm">OPENSTREETMAP</option>
+      </select>
+    </label>
     <label>RADIUS
       <select id="radius">
         <option value="10">10 km</option>
@@ -206,8 +238,8 @@ button:focus,select:focus{outline:2px solid var(--bright);outline-offset:2px}
     </label>
     <label>AIRSPACE
       <select id="airspaceMode">
-        <option value="off">AUS</option>
         <option value="all" selected>AN</option>
+        <option value="off">AUS</option>
       </select>
     </label>
     <button id="refresh" type="button">AKTUALISIEREN</button>
@@ -215,6 +247,8 @@ button:focus,select:focus{outline:2px solid var(--bright);outline-offset:2px}
   <div id="msg">Quelle: ADSB.lol · Aktualisierung alle 10 Sekunden</div>
 </footer>
 
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+ integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
 <script>
 (() => {
   const CENTER={lat:48.239166,lon:11.559334};
@@ -223,9 +257,11 @@ button:focus,select:focus{outline:2px solid var(--bright);outline-offset:2px}
   const planes=$('planes'), trails=$('trails'), list=$('list');
   const airspacesG=$('airspaces'), airspaceLabelsG=$('airspaceLabels');
   const radiusSel=$('radius'), altSel=$('alt'), groundSel=$('ground'), airspaceMode=$('airspaceMode');
+  const screenMode=$('screenMode');
 
   let raw=[], updated=0, busy=false;
   let airspaceItems=[], airspaceBusy=false;
+  let osmMap=null, osmTiles=null;
 
   // Trail-Historie wird in GEO-Koordinaten gespeichert.
   // Dadurch bleibt sie bei Range-Änderungen korrekt und wird neu projiziert.
@@ -316,6 +352,62 @@ button:focus,select:focus{outline:2px solid var(--bright);outline-offset:2px}
     return {x,y};
   }
 
+
+  function ensureOsmMap(){
+    if(osmMap || typeof L==='undefined') return;
+    osmMap=L.map('osmMap',{
+      center:[CENTER.lat,CENTER.lon],
+      zoom:11,
+      zoomControl:false,
+      attributionControl:true,
+      dragging:false,
+      touchZoom:false,
+      scrollWheelZoom:false,
+      doubleClickZoom:false,
+      boxZoom:false,
+      keyboard:false
+    });
+    osmTiles=L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png',{
+      minZoom:2,maxZoom:19,
+      attribution:'© OpenStreetMap contributors'
+    });
+    osmTiles.addTo(osmMap);
+    const tilePane=osmMap.getPane('tilePane');
+    if(tilePane) tilePane.classList.add('osm-dark');
+    fitOsmMap();
+  }
+
+  function fitOsmMap(){
+    if(!osmMap) return;
+    const km=Number(radiusSel.value);
+    const dLat=km/111.32;
+    const dLon=km/(111.32*Math.cos(rd(CENTER.lat)));
+    const bounds=L.latLngBounds(
+      [CENTER.lat-dLat,CENTER.lon-dLon],
+      [CENTER.lat+dLat,CENTER.lon+dLon]
+    );
+    osmMap.fitBounds(bounds,{padding:[0,0],animate:false});
+    setTimeout(()=>osmMap.invalidateSize(false),30);
+  }
+
+  function applyScreenMode(){
+    const isOsm=screenMode.value==='osm';
+    const mapEl=$('osmMap');
+    mapEl.style.display=isOsm?'block':'none';
+
+    // In OSM mode the geographic map replaces the synthetic radar grid,
+    // while EDNX, traffic, trails and airspaces remain visible above it.
+    ['radarFrame','grid','axes','radarLabels'].forEach(id=>{
+      const el=$(id);
+      if(el) el.style.display=isOsm?'none':'';
+    });
+
+    if(isOsm){
+      ensureOsmMap();
+      fitOsmMap();
+    }
+    render();
+  }
 
   function svgEl(name, attrs={}){
     const el=document.createElementNS('http://www.w3.org/2000/svg',name);
@@ -569,7 +661,7 @@ button:focus,select:focus{outline:2px solid var(--bright);outline-offset:2px}
     $('gridEast').textContent=`E +${maxKm}`;
 
     $('msg').textContent=raw.length
-      ? `${visible.length} angezeigt · ${raw.length} Rohziele · Trail 2 min · Ground nur EDNX · Airspace ${airspaceMode.options[airspaceMode.selectedIndex].text} · Projektion 1:1`
+      ? `${visible.length} angezeigt · ${raw.length} Rohziele · Trail 2 min · Ground nur EDNX · Screen ${screenMode.value==='osm'?'OpenStreetMap':'Radar'} · Airspace ${airspaceMode.options[airspaceMode.selectedIndex].text} · Projektion 1:1`
       : 'Keine Ziele empfangen';
   }
 
@@ -599,13 +691,15 @@ button:focus,select:focus{outline:2px solid var(--bright);outline-offset:2px}
   }
 
   radiusSel.addEventListener('change',()=>{
-    // Trail und Lufträume werden auf die neue Range neu projiziert.
+    // Trail, Lufträume und optionaler OSM-Hintergrund werden neu skaliert.
+    if(screenMode.value==='osm') fitOsmMap();
     render();
     load();
     loadAirspaces();
   });
   altSel.addEventListener('change',render);
   groundSel.addEventListener('change',render);
+  screenMode.addEventListener('change',applyScreenMode);
   airspaceMode.addEventListener('change',()=>{
     renderAirspaces();
     if(airspaceMode.value!=='off' && !airspaceItems.length) loadAirspaces();
@@ -622,6 +716,7 @@ button:focus,select:focus{outline:2px solid var(--bright);outline-offset:2px}
   },1000);
 
   $('clock').textContent=new Date().toLocaleTimeString('de-DE',{hour12:false,timeZone:'UTC'})+' UTC';
+  applyScreenMode();
   load();
   loadAirspaces();
 })();
