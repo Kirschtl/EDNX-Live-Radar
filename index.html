@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>EDNX Live Radar v6.1</title>
+<title>EDNX Live Radar v6.2</title>
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
  integrity="sha256-p4NxAoJBhIINfQ3ynZsoMZ7SUKMZeklaodGmR3fvb4A=" crossorigin=""/>
 <style>
@@ -357,14 +357,20 @@ button:focus,select:focus{outline:2px solid var(--bright);outline-offset:2px}
     ofmBase=L.tileLayer(
       'https://nwy-tiles-api.prod.newaydata.com/tiles/{z}/{x}/{y}.jpg?path=latest/base/latest',
       {
-        minZoom:7,maxZoom:13,pane:'ofmBase',
+        minZoom:7,maxZoom:14,
+        tileSize:512,
+        zoomOffset:-1,
+        pane:'ofmBase',
         attribution:'© open flightmaps association'
       }
     );
     ofmAero=L.tileLayer(
       'https://nwy-tiles-api.prod.newaydata.com/tiles/{z}/{x}/{y}.png?path=latest/aero/latest',
       {
-        minZoom:7,maxZoom:13,pane:'ofmAero',
+        minZoom:7,maxZoom:14,
+        tileSize:512,
+        zoomOffset:-1,
+        pane:'ofmAero',
         attribution:'© open flightmaps association'
       }
     );

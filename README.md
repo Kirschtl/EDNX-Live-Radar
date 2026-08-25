@@ -1,11 +1,13 @@
-# EDNX Live Radar v6.1
+# EDNX Live Radar v6.2
 
-Stabile v5-Radarlogik plus optionale OpenFlightMaps-Hintergrundkarte.
+Fix gegenüber v6.1:
+- OpenFlightMaps liefert 512px-Kacheln.
+- Leaflet wurde dafür auf `tileSize: 512` und `zoomOffset: -1` eingestellt.
+- Dadurch sollten die OFM-Kacheln wieder nahtlos und geografisch korrekt zusammengesetzt werden.
 
-Wichtig:
-- Radar, Flugzeuge, Labels, Trails und Sidebar bleiben vollständig v5.
-- Leaflet/OpenFlightMaps liegt ausschließlich als Hintergrund unter dem SVG.
-- VFR MAP startet AUS.
-- Toggle: VFR MAP AN/AUS.
-- Range-Wechsel skaliert Trail und Kartenhintergrund neu.
-- Kein Radar-Beam.
+Sonst unverändert:
+- stabiles v5-Radar
+- VFR MAP Toggle AN/AUS
+- Trails in Geo-Koordinaten
+- kein Beam
+- Ground Traffic nur EDNX
