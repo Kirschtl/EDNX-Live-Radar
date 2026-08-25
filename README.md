@@ -1,13 +1,13 @@
-# EDNX Live Radar v6.2
+# EDNX Live Radar v6.3
 
-Fix gegenüber v6.1:
-- OpenFlightMaps liefert 512px-Kacheln.
-- Leaflet wurde dafür auf `tileSize: 512` und `zoomOffset: -1` eingestellt.
-- Dadurch sollten die OFM-Kacheln wieder nahtlos und geografisch korrekt zusammengesetzt werden.
+Karten-Fix:
+- OFM-Basiskacheln werden nicht mehr verwendet.
+- Stabiler OpenStreetMap-Untergrund (normale 256px Slippy Tiles).
+- Darüber nur der transparente OpenFlightMaps-Aero-Layer.
+- Der OFM-Aero-Layer nutzt Leaflets Standard-Tile-Geometrie, ohne tileSize/zoomOffset-Manipulation.
+- VFR MAP bleibt per Toggle AN/AUS.
+- Radar/Traffic/Trails bleiben aus der stabilen v5/v6.1-Version.
 
-Sonst unverändert:
-- stabiles v5-Radar
-- VFR MAP Toggle AN/AUS
-- Trails in Geo-Koordinaten
-- kein Beam
-- Ground Traffic nur EDNX
+Warum:
+Die 512px OFM-Basiskacheln führten in der bisherigen direkten Leaflet-Einbindung zu fehlerhafter Kachelgeometrie.
+Der Aero-Layer wird als transparentes Luftfahrt-Overlay über einer stabilen OSM-Basiskarte genutzt.

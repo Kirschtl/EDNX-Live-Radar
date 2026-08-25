@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>EDNX Live Radar v6.2</title>
+<title>EDNX Live Radar v6.3</title>
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
  integrity="sha256-p4NxAoJBhIINfQ3ynZsoMZ7SUKMZeklaodGmR3fvb4A=" crossorigin=""/>
 <style>
@@ -74,7 +74,7 @@ main{
   font-size:10px!important;
 }
 .leaflet-control-attribution a{color:#9cff81!important}
-.ofm-base-pane{filter:brightness(.45) saturate(.70) contrast(1.10)}
+.osm-base-pane{filter:brightness(.38) saturate(.55) contrast(1.12)}
 .ofm-aero-pane{filter:brightness(.72) saturate(.85) contrast(1.05)}
 aside{
   border-left:1px solid var(--grid);
@@ -241,7 +241,7 @@ button:focus,select:focus{outline:2px solid var(--bright);outline-offset:2px}
 
   let raw=[], updated=0, busy=false;
   let mapVisible=false;
-  let bgMap=null, ofmBase=null, ofmAero=null;
+  let bgMap=null, osmBase=null, ofmAero=null;
 
   // Trail-Historie wird in GEO-Koordinaten gespeichert.
   // Dadurch bleibt sie bei Range-Änderungen korrekt und wird neu projiziert.
@@ -346,31 +346,25 @@ button:focus,select:focus{outline:2px solid var(--bright);outline-offset:2px}
       keyboard:false
     });
 
-    bgMap.createPane('ofmBase');
-    bgMap.getPane('ofmBase').style.zIndex=200;
-    bgMap.getPane('ofmBase').classList.add('ofm-base-pane');
+    bgMap.createPane('osmBase');
+    bgMap.getPane('osmBase').style.zIndex=200;
+    bgMap.getPane('osmBase').classList.add('osm-base-pane');
 
     bgMap.createPane('ofmAero');
     bgMap.getPane('ofmAero').style.zIndex=210;
     bgMap.getPane('ofmAero').classList.add('ofm-aero-pane');
 
-    ofmBase=L.tileLayer(
-      'https://nwy-tiles-api.prod.newaydata.com/tiles/{z}/{x}/{y}.jpg?path=latest/base/latest',
+    osmBase=L.tileLayer(
+      'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
       {
-        minZoom:7,maxZoom:14,
-        tileSize:512,
-        zoomOffset:-1,
-        pane:'ofmBase',
-        attribution:'© open flightmaps association'
+        minZoom:2,maxZoom:19,pane:'osmBase',
+        attribution:'© OpenStreetMap contributors'
       }
     );
     ofmAero=L.tileLayer(
       'https://nwy-tiles-api.prod.newaydata.com/tiles/{z}/{x}/{y}.png?path=latest/aero/latest',
       {
-        minZoom:7,maxZoom:14,
-        tileSize:512,
-        zoomOffset:-1,
-        pane:'ofmAero',
+        minZoom:7,maxZoom:13,pane:'ofmAero',
         attribution:'© open flightmaps association'
       }
     );
@@ -398,13 +392,13 @@ button:focus,select:focus{outline:2px solid var(--bright);outline-offset:2px}
     if(on){
       mapBg.style.display='block';
       ensureMap();
-      if(bgMap && ofmBase && !bgMap.hasLayer(ofmBase)) ofmBase.addTo(bgMap);
+      if(bgMap && osmBase && !bgMap.hasLayer(osmBase)) osmBase.addTo(bgMap);
       if(bgMap && ofmAero && !bgMap.hasLayer(ofmAero)) ofmAero.addTo(bgMap);
       fitBackgroundMap();
       btn.textContent='VFR MAP: AN';
       btn.classList.add('active');
     }else{
-      if(bgMap && ofmBase && bgMap.hasLayer(ofmBase)) bgMap.removeLayer(ofmBase);
+      if(bgMap && osmBase && bgMap.hasLayer(osmBase)) bgMap.removeLayer(osmBase);
       if(bgMap && ofmAero && bgMap.hasLayer(ofmAero)) bgMap.removeLayer(ofmAero);
       mapBg.style.display='none';
       btn.textContent='VFR MAP: AUS';
@@ -498,7 +492,7 @@ button:focus,select:focus{outline:2px solid var(--bright);outline-offset:2px}
     $('gridEast').textContent=`E +${maxKm}`;
 
     $('msg').textContent=raw.length
-      ? `${visible.length} angezeigt · ${raw.length} Rohziele · Trail 2 min · Ground nur EDNX · VFR Map ${mapVisible?'AN':'AUS'}`
+      ? `${visible.length} angezeigt · ${raw.length} Rohziele · Trail 2 min · Ground nur EDNX · VFR Map ${mapVisible?'AN (OSM + OFM Aero)':'AUS'}`
       : 'Keine Ziele empfangen';
   }
 
