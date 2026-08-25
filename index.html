@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>EDNX Live Radar v4</title>
+<title>EDNX Live Radar v5</title>
 <style>
 :root{
   --bg:#010301;
@@ -13,8 +13,6 @@
   --text:#9cff81;
   --muted:#6f9f70;
   --bright:#b5ff98;
-  --dim:#4f7c55;
-  --warn:#ffcc66;
   --error:#ff7777;
 }
 *{box-sizing:border-box}
@@ -27,11 +25,10 @@ html,body{
 }
 body{display:flex;flex-direction:column}
 header{
-  height:74px;flex:0 0 74px;
+  height:72px;flex:0 0 72px;
   display:flex;align-items:center;justify-content:space-between;
   padding:0 22px;
   border-bottom:1px solid var(--grid);
-  background:#010301;
 }
 .title{font-size:29px;letter-spacing:.08em;font-weight:700}
 .sub{font-size:13px;color:var(--muted);margin-top:4px}
@@ -68,9 +65,7 @@ aside h2{
   border-top:1px solid #113018;
 }
 .flight:first-of-type{border-top:0}
-.smallIcon{
-  width:28px;height:28px;display:block;
-}
+.smallIcon{width:28px;height:28px;display:block}
 .call{font-size:17px;font-weight:700;color:var(--bright)}
 .meta{font-size:12px;color:#81ae84;line-height:1.45;margin-top:3px}
 footer{
@@ -79,7 +74,6 @@ footer{
   gap:14px;flex-wrap:wrap;
   padding:10px 18px;
   border-top:1px solid var(--grid);
-  background:#010301;
 }
 .controls{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
 label{font-size:11px;color:var(--muted);display:flex;align-items:center;gap:6px}
@@ -121,44 +115,44 @@ button:focus,select:focus{outline:2px solid var(--bright);outline-offset:2px}
 <main>
   <div id="radarWrap">
     <svg id="radar" viewBox="0 0 1200 780" role="img" aria-label="EDNX Live Radar">
-      <g id="rings" fill="none" stroke="#173d20" stroke-width="1">
-        <circle cx="560" cy="390" r="95"/>
-        <circle cx="560" cy="390" r="190"/>
-        <circle cx="560" cy="390" r="285"/>
-        <circle cx="560" cy="390" r="360"/>
-        <line x1="560" y1="30" x2="560" y2="750"/>
-        <line x1="200" y1="390" x2="920" y2="390"/>
-        <line x1="305" y1="135" x2="815" y2="645"/>
-        <line x1="815" y1="135" x2="305" y2="645"/>
+      <!-- rechteckige Radarfläche -->
+      <rect x="50" y="30" width="1030" height="700" fill="none" stroke="#2f6a3a" stroke-width="1.2"/>
+
+      <!-- Raster -->
+      <g id="grid" fill="none" stroke="#173d20" stroke-width="1">
+        <line x1="50" y1="205" x2="1080" y2="205"/>
+        <line x1="50" y1="380" x2="1080" y2="380"/>
+        <line x1="50" y1="555" x2="1080" y2="555"/>
+        <line x1="307.5" y1="30" x2="307.5" y2="730"/>
+        <line x1="565" y1="30" x2="565" y2="730"/>
+        <line x1="822.5" y1="30" x2="822.5" y2="730"/>
+      </g>
+
+      <!-- Hauptachsen -->
+      <g fill="none" stroke="#285b33" stroke-width="1.2">
+        <line x1="565" y1="30" x2="565" y2="730"/>
+        <line x1="50" y1="380" x2="1080" y2="380"/>
       </g>
 
       <g fill="#5f8d66" font-size="14">
-        <text x="548" y="24">N</text>
-        <text x="930" y="395">E</text>
-        <text x="549" y="763">S</text>
-        <text x="176" y="395">W</text>
-        <text x="570" y="300" id="ring1">7.5 km</text>
-        <text x="570" y="205" id="ring2">15 km</text>
-        <text x="570" y="110" id="ring3">22.5 km</text>
-        <text x="570" y="42" id="ring4">30 km</text>
+        <text x="555" y="22">N</text>
+        <text x="1088" y="385">E</text>
+        <text x="555" y="750">S</text>
+        <text x="28" y="385">W</text>
+
+        <text id="topRange" x="84" y="54">±30 km</text>
+        <text id="gridNorth" x="575" y="55">N +30</text>
+        <text id="gridSouth" x="575" y="718">S -30</text>
+        <text id="gridWest" x="62" y="370">W -30</text>
+        <text id="gridEast" x="1000" y="370">E +30</text>
       </g>
 
+      <!-- EDNX Zentrum -->
       <g>
-        <circle cx="560" cy="390" r="5" fill="#b5ff98"/>
-        <circle cx="560" cy="390" r="12" fill="none" stroke="#4d8155"/>
-        <text x="578" y="385" fill="#b5ff98" font-size="15">EDNX</text>
-        <text x="578" y="402" fill="#668c6a" font-size="11">1,594 FT MSL</text>
-      </g>
-
-      <g id="sweep">
-        <defs>
-          <linearGradient id="beamGrad" x1="0" x2="1">
-            <stop offset="0%" stop-color="#9cff81" stop-opacity=".20"/>
-            <stop offset="100%" stop-color="#9cff81" stop-opacity="0"/>
-          </linearGradient>
-        </defs>
-        <path d="M560 390 L500 36 A360 360 0 0 1 560 30 Z" fill="url(#beamGrad)"/>
-        <line x1="560" y1="390" x2="560" y2="30" stroke="#9cff81" stroke-width="2" opacity=".45"/>
+        <circle cx="565" cy="380" r="5" fill="#b5ff98"/>
+        <circle cx="565" cy="380" r="12" fill="none" stroke="#4d8155"/>
+        <text x="583" y="375" fill="#b5ff98" font-size="15">EDNX</text>
+        <text x="583" y="392" fill="#668c6a" font-size="11">1,594 FT MSL</text>
       </g>
 
       <g id="trails"></g>
@@ -210,9 +204,13 @@ button:focus,select:focus{outline:2px solid var(--bright);outline-offset:2px}
   const $=id=>document.getElementById(id);
   const planes=$('planes'), trails=$('trails'), list=$('list');
   const radiusSel=$('radius'), altSel=$('alt'), groundSel=$('ground');
-  let raw=[], updated=0, busy=false, sweepAngle=0;
 
-  const history=new Map(); // key -> [{x,y,t}]
+  let raw=[], updated=0, busy=false;
+
+  // Trail-Historie wird in GEO-Koordinaten gespeichert.
+  // Dadurch bleibt sie bei Range-Änderungen korrekt und wird neu projiziert.
+  const history=new Map();
+
   const rd=d=>d*Math.PI/180;
   const dg=r=>r*180/Math.PI;
   const fmt=n=>Number(n).toLocaleString('de-DE');
@@ -222,31 +220,42 @@ button:focus,select:focus{outline:2px solid var(--bright);outline-offset:2px}
     const a=Math.sin(dLat/2)**2 + Math.cos(rd(lat1))*Math.cos(rd(lat2))*Math.sin(dLon/2)**2;
     return 2*R*Math.asin(Math.sqrt(a));
   }
+
   function bearing(lat1,lon1,lat2,lon2){
     const y=Math.sin(rd(lon2-lon1))*Math.cos(rd(lat2));
     const x=Math.cos(rd(lat1))*Math.sin(rd(lat2)) -
             Math.sin(rd(lat1))*Math.cos(rd(lat2))*Math.cos(rd(lon2-lon1));
     return (dg(Math.atan2(y,x))+360)%360;
   }
+
   function altitude(ac){
     if(ac.alt_baro==='ground') return 0;
     const n=Number(ac.alt_baro);
     return Number.isFinite(n)?n:null;
   }
+
   function callsign(ac){return (ac.flight||'').trim()}
   function reg(ac){return (ac.r||'').trim()}
   function name(ac){return callsign(ac)||reg(ac)||(ac.hex||'').toUpperCase()||'UNBEKANNT'}
   function type(ac){return (ac.t||'').trim()||'—'}
+
   function hdg(ac){
     const v=[ac.track,ac.true_heading,ac.mag_heading].map(Number).find(Number.isFinite);
     return Number.isFinite(v)?((v%360)+360)%360:null;
   }
+
   function speed(ac){
     const n=Number(ac.gs);
     return Number.isFinite(n)?Math.round(n):null;
   }
-  function key(ac){return (ac.hex||reg(ac)||callsign(ac)||Math.random().toString(36)).trim()}
-  function esc(s){return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
+
+  function key(ac){
+    return (ac.hex||reg(ac)||callsign(ac)||Math.random().toString(36)).trim();
+  }
+
+  function esc(s){
+    return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  }
 
   function isAllowedGround(ac,d){
     const a=altitude(ac);
@@ -262,18 +271,32 @@ button:focus,select:focus{outline:2px solid var(--bright);outline-offset:2px}
     return {first,second};
   }
 
-  function updateHistory(ac,x,y){
+  function rememberPosition(ac){
     const k=key(ac), now=Date.now();
     let arr=history.get(k)||[];
-    arr.push({x,y,t:now});
-    arr=arr.filter(p=>now-p.t<120000); // 2 Minuten Spur
+    arr.push({lat:Number(ac.lat),lon:Number(ac.lon),t:now});
+    arr=arr.filter(p=>now-p.t<120000);
     if(arr.length>18) arr=arr.slice(-18);
     history.set(k,arr);
     return arr;
   }
 
+  // lokale Ost/Nord-Projektion in km, gut für 20–100 km Radius
+  function project(lat,lon,maxKm){
+    const meanLat=rd((lat+CENTER.lat)/2);
+    const north=(lat-CENTER.lat)*111.32;
+    const east=(lon-CENTER.lon)*111.32*Math.cos(meanLat);
+
+    // Radarfläche: x=50..1080, y=30..730
+    const halfW=515, halfH=350;
+    const x=565 + (east/maxKm)*halfW;
+    const y=380 - (north/maxKm)*halfH;
+    return {x,y};
+  }
+
   function render(){
     const maxKm=Number(radiusSel.value), maxAlt=Number(altSel.value);
+
     const visible=raw.map(ac=>{
       if(!Number.isFinite(Number(ac.lat))||!Number.isFinite(Number(ac.lon))) return null;
       const a=altitude(ac);
@@ -284,43 +307,50 @@ button:focus,select:focus{outline:2px solid var(--bright);outline-offset:2px}
       return {...ac,_alt:a,_dist:d,_bear:bearing(CENTER.lat,CENTER.lon,Number(ac.lat),Number(ac.lon))};
     }).filter(Boolean).sort((a,b)=>a._dist-b._dist);
 
-    planes.innerHTML=''; trails.innerHTML=''; list.innerHTML='';
+    planes.innerHTML='';
+    trails.innerHTML='';
+    list.innerHTML='';
 
     visible.forEach(ac=>{
-      const rr=Math.min(360,(ac._dist/maxKm)*360);
-      const th=rd(ac._bear);
-      const x=560+Math.sin(th)*rr;
-      const y=390-Math.cos(th)*rr;
+      const p=project(Number(ac.lat),Number(ac.lon),maxKm);
       const heading=hdg(ac)??ac._bear;
 
-      const arr=updateHistory(ac,x,y);
+      const arr=rememberPosition(ac);
+
+      // Alte Spuren immer anhand der GEO-Koordinaten neu projizieren.
       if(arr.length>1){
-        const pl=document.createElementNS('http://www.w3.org/2000/svg','polyline');
-        pl.setAttribute('points',arr.map(p=>`${p.x},${p.y}`).join(' '));
-        pl.setAttribute('fill','none');
-        pl.setAttribute('stroke','#6fae70');
-        pl.setAttribute('stroke-width','1.2');
-        pl.setAttribute('stroke-dasharray','2 5');
-        pl.setAttribute('opacity','.65');
-        trails.appendChild(pl);
+        const pts=arr
+          .map(h=>project(h.lat,h.lon,maxKm))
+          .filter(pt=>pt.x>=50&&pt.x<=1080&&pt.y>=30&&pt.y<=730);
+
+        if(pts.length>1){
+          const pl=document.createElementNS('http://www.w3.org/2000/svg','polyline');
+          pl.setAttribute('points',pts.map(pt=>`${pt.x},${pt.y}`).join(' '));
+          pl.setAttribute('fill','none');
+          pl.setAttribute('stroke','#6fae70');
+          pl.setAttribute('stroke-width','1.2');
+          pl.setAttribute('stroke-dasharray','2 5');
+          pl.setAttribute('opacity','.68');
+          trails.appendChild(pl);
+        }
       }
 
       const g=document.createElementNS('http://www.w3.org/2000/svg','g');
-      g.setAttribute('transform',`translate(${x} ${y}) rotate(${heading})`);
+      g.setAttribute('transform',`translate(${p.x} ${p.y}) rotate(${heading})`);
       g.innerHTML=`
         <path d="M0,-11 L2.2,-2.2 L10,1.5 L10,3.5 L2.8,2.7 L1.8,10 L-1.8,10 L-2.8,2.7 L-10,3.5 L-10,1.5 L-2.2,-2.2 Z"
-              fill="none" stroke="#9cff81" stroke-width="1.4" stroke-linejoin="round"/>
+              fill="none" stroke="#9cff81" stroke-width="1.25" stroke-linejoin="round"/>
       `;
       planes.appendChild(g);
 
       const dl=dataLine(ac);
       const tx=document.createElementNS('http://www.w3.org/2000/svg','text');
-      tx.setAttribute('x',x+15);
-      tx.setAttribute('y',y-9);
+      tx.setAttribute('x',p.x+15);
+      tx.setAttribute('y',p.y-9);
       tx.setAttribute('font-size','11.5');
       tx.innerHTML=`
-        <tspan x="${x+15}" fill="#b5ff98">${esc(dl.first)}</tspan>
-        <tspan x="${x+15}" dy="14" fill="#7ea77f">${esc(dl.second)}</tspan>`;
+        <tspan x="${p.x+15}" fill="#b5ff98">${esc(dl.first)}</tspan>
+        <tspan x="${p.x+15}" dy="14" fill="#7ea77f">${esc(dl.second)}</tspan>`;
       planes.appendChild(tx);
 
       const div=document.createElement('div');
@@ -331,7 +361,7 @@ button:focus,select:focus{outline:2px solid var(--bright);outline-offset:2px}
       div.innerHTML=`
         <svg class="smallIcon" viewBox="-12 -12 24 24" aria-hidden="true">
           <path d="M0,-9 L2,-2 L9,1 L9,3 L2.5,2.5 L1.5,9 L-1.5,9 L-2.5,2.5 L-9,3 L-9,1 L-2,-2 Z"
-            fill="none" stroke="#9cff81" stroke-width="1.3"/>
+            fill="none" stroke="#9cff81" stroke-width="1.2"/>
         </svg>
         <div>
           <div class="call">${esc(top)}</div>
@@ -343,14 +373,14 @@ button:focus,select:focus{outline:2px solid var(--bright);outline-offset:2px}
     });
 
     $('listTitle').textContent=`AIRCRAFT ≤ ${maxAlt>90000?'ALLE':fmt(maxAlt)+' FT'} · ${maxKm} KM · ${visible.length}`;
-
-    $('ring1').textContent=(maxKm*.25).toFixed(maxKm%4?1:0)+' km';
-    $('ring2').textContent=(maxKm*.50).toFixed(maxKm%2?1:0)+' km';
-    $('ring3').textContent=(maxKm*.75).toFixed(maxKm%4?1:0)+' km';
-    $('ring4').textContent=maxKm+' km';
+    $('topRange').textContent=`±${maxKm} km`;
+    $('gridNorth').textContent=`N +${maxKm}`;
+    $('gridSouth').textContent=`S -${maxKm}`;
+    $('gridWest').textContent=`W -${maxKm}`;
+    $('gridEast').textContent=`E +${maxKm}`;
 
     $('msg').textContent=raw.length
-      ? `${visible.length} angezeigt · ${raw.length} Rohziele · Ground nur ≤ ${EDNX_GROUND_RADIUS_KM.toFixed(1)} km um EDNX`
+      ? `${visible.length} angezeigt · ${raw.length} Rohziele · Trail 2 min · Ground nur EDNX`
       : 'Keine Ziele empfangen';
   }
 
@@ -359,6 +389,7 @@ button:focus,select:focus{outline:2px solid var(--bright);outline-offset:2px}
     busy=true;
     $('state').textContent='● LADE…';
     $('state').className='live';
+
     try{
       const R=Number(radiusSel.value);
       const res=await fetch(`/.netlify/functions/aircraft?radius=${encodeURIComponent(R)}`,{cache:'no-store'});
@@ -378,7 +409,11 @@ button:focus,select:focus{outline:2px solid var(--bright);outline-offset:2px}
     }
   }
 
-  radiusSel.addEventListener('change',()=>{render();load()});
+  radiusSel.addEventListener('change',()=>{
+    // Trail bleibt erhalten, wird aber korrekt neu projiziert.
+    render();
+    load();
+  });
   altSel.addEventListener('change',render);
   groundSel.addEventListener('change',render);
   $('refresh').addEventListener('click',load);
@@ -388,14 +423,6 @@ button:focus,select:focus{outline:2px solid var(--bright);outline-offset:2px}
     $('clock').textContent=new Date().toLocaleTimeString('de-DE',{hour12:false,timeZone:'UTC'})+' UTC';
     $('age').textContent=updated?Math.floor((Date.now()-updated)/1000)+' s alt':'keine Daten';
   },1000);
-
-  function animate(){
-    // ca. doppelte Geschwindigkeit gegenüber v3
-    sweepAngle=(sweepAngle+0.20)%360;
-    $('sweep').setAttribute('transform',`rotate(${sweepAngle} 560 390)`);
-    requestAnimationFrame(animate);
-  }
-  if(!window.matchMedia('(prefers-reduced-motion: reduce)').matches) animate();
 
   $('clock').textContent=new Date().toLocaleTimeString('de-DE',{hour12:false,timeZone:'UTC'})+' UTC';
   load();

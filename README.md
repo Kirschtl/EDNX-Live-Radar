@@ -1,13 +1,10 @@
-# EDNX Live Radar v4
+# EDNX Live Radar v5
 
-Live ADS-B radar centered on EDNX Oberschleißheim.
-
-Changes in v4:
-- FlightWall/ATC-like labels
-- registration + callsign where available
-- altitude, groundspeed and heading
-- 2-minute radar trail
-- faster radar beam
-- ground traffic only very close to EDNX
-- finer aircraft symbols
-- no CTR/RMZ/traffic-pattern overlays
+Änderungen:
+- rechteckige Radarfläche statt Kreis
+- Radar-Beam entfernt
+- Flugspuren werden in geografischen Koordinaten gespeichert
+- Range-Wechsel projiziert die komplette Spur korrekt neu
+- kein Springen bzw. Zurückbleiben alter Trail-Segmente
+- filigrane Flugzeugsymbole
+- Ground Traffic nur direkt bei EDNX
