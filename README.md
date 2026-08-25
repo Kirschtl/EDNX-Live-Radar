@@ -1,13 +1,19 @@
-# EDNX Live Radar v6.3
+# EDNX Live Radar v7
 
-Karten-Fix:
-- OFM-Basiskacheln werden nicht mehr verwendet.
-- Stabiler OpenStreetMap-Untergrund (normale 256px Slippy Tiles).
-- Darüber nur der transparente OpenFlightMaps-Aero-Layer.
-- Der OFM-Aero-Layer nutzt Leaflets Standard-Tile-Geometrie, ohne tileSize/zoomOffset-Manipulation.
-- VFR MAP bleibt per Toggle AN/AUS.
-- Radar/Traffic/Trails bleiben aus der stabilen v5/v6.1-Version.
+Neu:
+- echte openAIP-Lufträume als GeoJSON-Polygone
+- keine OpenFlightMaps-/Leaflet-Tiles mehr
+- AIRSPACE-Schalter:
+  - AUS
+  - CTR + RMZ (lokal: München CTR / EDNX-Oberschleißheim RMZ)
+  - ALLE
+- CTR magenta
+- RMZ blau
+- andere Lufträume grau (nur bei ALLE)
+- Range-Wechsel projiziert die Lufträume zusammen mit Traffic/Trails neu
+- openAIP-Key bleibt serverseitig in Netlify (`OPENAIP_API_KEY`)
+- openAIP-Antwort wird gecacht, um API- und Netlify-Verbrauch zu reduzieren
 
-Warum:
-Die 512px OFM-Basiskacheln führten in der bisherigen direkten Leaflet-Einbindung zu fehlerhafter Kachelgeometrie.
-Der Aero-Layer wird als transparentes Luftfahrt-Overlay über einer stabilen OSM-Basiskarte genutzt.
+Daten:
+- Traffic: ADSB.lol
+- Airspaces: openAIP Core API
