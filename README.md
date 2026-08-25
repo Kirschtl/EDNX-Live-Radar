@@ -1,11 +1,9 @@
-# EDNX Live Radar v7.1
+# EDNX Live Radar v7.2
 
-Fixes gegenüber v7:
-- geografische Projektion korrigiert: Ost/West und Nord/Süd nutzen jetzt exakt denselben Pixel-pro-km-Maßstab
-- dadurch werden CTR/RMZ-Polygone nicht mehr horizontal verzerrt
-- Filter `EDDM CTR + EDNX RMZ` korrigiert
-- erkennt u.a. `CTR MUENCHEN`, `CTR SEKTOR EDNX (HX)` und `RMZ EDNX`
-- `ALLE` bleibt unverändert verfügbar
-
-Hinweis:
-Die rechteckige Radarfläche bleibt bestehen. Die tatsächliche geografische Darstellung wird darin 1:1 skaliert; dadurch können links/rechts ungenutzte Randbereiche entstehen. Das ist beabsichtigt und verhindert Verzerrungen.
+Änderung:
+- AIRSPACE hat nur noch zwei Zustände:
+  - AUS
+  - AN
+- AN zeigt alle von openAIP gelieferten Lufträume.
+- Der bisherige separate Modus EDDM CTR + EDNX RMZ wurde entfernt.
+- Sonst unverändert gegenüber v7.1.

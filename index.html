@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>EDNX Live Radar v7.1</title>
+<title>EDNX Live Radar v7.2</title>
 <style>
 :root{
   --bg:#010301;
@@ -205,8 +205,7 @@ button:focus,select:focus{outline:2px solid var(--bright);outline-offset:2px}
     <label>AIRSPACE
       <select id="airspaceMode">
         <option value="off">AUS</option>
-        <option value="local" selected>EDDM CTR + EDNX RMZ</option>
-        <option value="all">ALLE</option>
+        <option value="all" selected>AN</option>
       </select>
     </label>
     <button id="refresh" type="button">AKTUALISIEREN</button>
@@ -383,10 +382,7 @@ button:focus,select:focus{outline:2px solid var(--bright);outline-offset:2px}
     if(mode==='off') return;
 
     const maxKm=Number(radiusSel.value);
-    const shown=airspaceItems.filter(item => {
-      if(mode==='all') return true;
-      return isLocalDesiredAirspace(item);
-    });
+    const shown = mode==='all' ? airspaceItems : [];
 
     shown.forEach(item=>{
       const geom=geometryOf(item);
