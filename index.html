@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>EDNX Live Radar v7.4</title>
+<title>EDNX Live Radar v7.5</title>
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
  integrity="sha256-p4NxAoJBhIINfQ3ynZsoMZ7SUKMZeklaodGmR3fvb4A=" crossorigin=""/>
 <style>
@@ -54,7 +54,7 @@ main{
 #osmMap{
   position:absolute;
   inset:0;
-  z-index:0;
+  z-index:3;
   display:none;
   background:#010301;
 }
@@ -65,7 +65,6 @@ main{
   width:100%;
   height:100%;
   display:block;
-  pointer-events:none;
 }
 .leaflet-container{background:#010301}
 .leaflet-control-attribution{
@@ -74,7 +73,24 @@ main{
   font-size:10px!important;
 }
 .leaflet-control-attribution a{color:#9cff81!important}
-.osm-dark{filter:brightness(.45) saturate(.55) contrast(1.1)}
+.leaflet-container{font-family:inherit}
+.map-ac-label{
+  color:#9cff81;
+  font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+  font-size:11px;
+  line-height:1.15;
+  white-space:nowrap;
+  text-shadow:0 0 3px #000,0 0 3px #000,0 0 3px #000;
+}
+.map-ednx-label{
+  color:#b8ffb0;
+  font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+  font-size:13px;
+  font-weight:700;
+  white-space:nowrap;
+  text-shadow:0 0 3px #000,0 0 3px #000;
+}
+
 aside{
   border-left:1px solid var(--grid);
   background:#010401;
@@ -353,6 +369,8 @@ button:focus,select:focus{outline:2px solid var(--bright);outline-offset:2px}
   }
 
 
+  let osmAircraftLayer=null, osmTrailLayer=null, osmAirspaceLayer=null, osmEdnxLayer=null;
+
   function ensureOsmMap(){
     if(osmMap || typeof L==='undefined') return;
     osmMap=L.map('osmMap',{
@@ -365,48 +383,185 @@ button:focus,select:focus{outline:2px solid var(--bright);outline-offset:2px}
       scrollWheelZoom:false,
       doubleClickZoom:false,
       boxZoom:false,
-      keyboard:false
+      keyboard:false,
+      preferCanvas:true
     });
+
     osmTiles=L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png',{
       minZoom:2,maxZoom:19,
-      attribution:'© OpenStreetMap contributors'
-    });
-    osmTiles.addTo(osmMap);
-    const tilePane=osmMap.getPane('tilePane');
-    if(tilePane) tilePane.classList.add('osm-dark');
+      attribution:'© OpenStreetMap contributors',
+      updateWhenIdle:false,
+      keepBuffer:4
+    }).addTo(osmMap);
+
+    osmAirspaceLayer=L.layerGroup().addTo(osmMap);
+    osmTrailLayer=L.layerGroup().addTo(osmMap);
+    osmAircraftLayer=L.layerGroup().addTo(osmMap);
+    osmEdnxLayer=L.layerGroup().addTo(osmMap);
+
     fitOsmMap();
   }
 
   function fitOsmMap(){
     if(!osmMap) return;
     const km=Number(radiusSel.value);
+    // Leaflet itself converts geographic coordinates to Web Mercator.
+    // We only specify the desired geographic square around EDNX.
     const dLat=km/111.32;
     const dLon=km/(111.32*Math.cos(rd(CENTER.lat)));
     const bounds=L.latLngBounds(
       [CENTER.lat-dLat,CENTER.lon-dLon],
       [CENTER.lat+dLat,CENTER.lon+dLon]
     );
-    osmMap.fitBounds(bounds,{padding:[0,0],animate:false});
-    setTimeout(()=>osmMap.invalidateSize(false),30);
+    osmMap.fitBounds(bounds,{padding:[6,6],animate:false});
+    setTimeout(()=>osmMap.invalidateSize(false),50);
+  }
+
+  function osmAircraftIcon(ac){
+    const heli=isHelicopter(ac);
+    const path=aircraftSvgPath(ac,false);
+    const hdg=Number(ac.track ?? ac.true_heading ?? ac.mag_heading ?? 0);
+    return L.divIcon({
+      className:'',
+      iconSize:[30,30],
+      iconAnchor:[15,15],
+      html:`<svg width="30" height="30" viewBox="-15 -15 30 30" style="overflow:visible;transform:rotate(${hdg}deg)">
+        <path d="${path}" fill="none" stroke="#9cff81" stroke-width="1.25"
+          stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>`
+    });
+  }
+
+  function renderOsmAirspaces(){
+    if(!osmMap || !osmAirspaceLayer) return;
+    osmAirspaceLayer.clearLayers();
+    if(airspaceMode.value==='off') return;
+
+    for(const item of airspaceItems){
+      const geom=item.geometry || item.geojson || item.geom;
+      if(!geom) continue;
+      const cls=classifyAirspace(item);
+      const color=cls==='rmz' ? '#3fa7ff' : cls==='ctr' ? '#ff5cab' : '#718077';
+      const weight=(cls==='rmz'||cls==='ctr') ? 2 : 1;
+      const dashArray=cls==='rmz' ? '7 5' : cls==='ctr' ? null : '5 6';
+      const style={color,weight,opacity:.9,fill:false,dashArray};
+
+      try{
+        const layer=L.geoJSON({type:'Feature',geometry:geom,properties:{}},{style});
+        layer.addTo(osmAirspaceLayer);
+
+        if(cls==='rmz'||cls==='ctr'){
+          const b=layer.getBounds();
+          if(b.isValid()){
+            L.marker(b.getCenter(),{
+              interactive:false,
+              icon:L.divIcon({
+                className:'',
+                iconSize:[180,18],
+                iconAnchor:[90,9],
+                html:`<div class="map-ac-label" style="color:${color};text-align:center">${escapeHtml(airspaceName(item))}</div>`
+              })
+            }).addTo(osmAirspaceLayer);
+          }
+        }
+      }catch(e){}
+    }
+  }
+
+  function renderOsm(){
+    if(screenMode.value!=='osm') return;
+    ensureOsmMap();
+    if(!osmMap) return;
+
+    osmAircraftLayer.clearLayers();
+    osmTrailLayer.clearLayers();
+    osmEdnxLayer.clearLayers();
+    renderOsmAirspaces();
+
+    const maxKm=Number(radiusSel.value);
+    const maxAlt=Number(altSel.value);
+    const showGround=groundSel.value==='on';
+
+    // EDNX reference marker
+    L.circleMarker([CENTER.lat,CENTER.lon],{
+      radius:5,color:'#9cff81',weight:1,fillColor:'#d7ffd1',fillOpacity:1,interactive:false
+    }).addTo(osmEdnxLayer);
+    L.marker([CENTER.lat,CENTER.lon],{
+      interactive:false,
+      icon:L.divIcon({
+        className:'',iconSize:[100,34],iconAnchor:[-8,17],
+        html:`<div class="map-ednx-label">EDNX<br><span style="font-size:10px;font-weight:400;color:#6f9f70">1,594 FT MSL</span></div>`
+      })
+    }).addTo(osmEdnxLayer);
+
+    for(const ac of raw){
+      const lat=Number(ac.lat), lon=Number(ac.lon);
+      if(!Number.isFinite(lat)||!Number.isFinite(lon)) continue;
+
+      const d=distanceKm(CENTER.lat,CENTER.lon,lat,lon);
+      if(d>maxKm) continue;
+
+      const alt=Number(ac.alt_baro);
+      const onGround=String(ac.alt_baro).toLowerCase()==='ground' || ac.alt_baro==null && Number(ac.gs)<5;
+      if(onGround){
+        if(!showGround || d>3) continue;
+      }else if(Number.isFinite(alt) && alt>maxAlt){
+        continue;
+      }
+
+      const hex=String(ac.hex||'').toUpperCase();
+      const callsign=String(ac.flight||'').trim();
+      const reg=String(ac.r||'').trim();
+      const ident=callsign || reg || hex || '—';
+      const typ=String(ac.t||'').trim();
+      const gs=Number(ac.gs);
+      const hdg=Number(ac.track ?? ac.true_heading ?? ac.mag_heading);
+      const altText=onGround?'GND':Number.isFinite(alt)?`${Math.round(alt/25)*25} ft`:'—';
+
+      // trailHistory uses geographic samples, so Leaflet projects every point itself.
+      const hist=trailHistory.get(hex)||[];
+      const pts=hist
+        .filter(p=>Number.isFinite(p.lat)&&Number.isFinite(p.lon))
+        .map(p=>[p.lat,p.lon]);
+      if(pts.length>1){
+        L.polyline(pts,{color:'#78c779',weight:1,opacity:.55,interactive:false})
+          .addTo(osmTrailLayer);
+      }
+
+      L.marker([lat,lon],{
+        interactive:false,
+        icon:osmAircraftIcon(ac)
+      }).addTo(osmAircraftLayer);
+
+      const label=`${escapeHtml(ident)}${reg && reg!==ident?' · '+escapeHtml(reg):''}${typ?' · '+escapeHtml(typ):''}<br>${altText} · ${Number.isFinite(gs)?Math.round(gs)+' kt':'—'} · ${Number.isFinite(hdg)?String(Math.round(hdg)).padStart(3,'0')+'°':'—'}`;
+      L.marker([lat,lon],{
+        interactive:false,
+        icon:L.divIcon({
+          className:'',
+          iconSize:[230,32],
+          iconAnchor:[-12,16],
+          html:`<div class="map-ac-label">${label}</div>`
+        })
+      }).addTo(osmAircraftLayer);
+    }
   }
 
   function applyScreenMode(){
     const isOsm=screenMode.value==='osm';
-    const mapEl=$('osmMap');
-    mapEl.style.display=isOsm?'block':'none';
-
-    // In OSM mode the geographic map replaces the synthetic radar grid,
-    // while EDNX, traffic, trails and airspaces remain visible above it.
-    ['radarFrame','grid','axes','radarLabels'].forEach(id=>{
-      const el=$(id);
-      if(el) el.style.display=isOsm?'none':'';
-    });
+    $('osmMap').style.display=isOsm?'block':'none';
+    $('radar').style.display=isOsm?'none':'block';
 
     if(isOsm){
       ensureOsmMap();
       fitOsmMap();
+      renderOsm();
+    }else{
+      render();
     }
-    render();
+  }
+
+  function escapeHtml(v){
+    return String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   }
 
   function svgEl(name, attrs={}){
@@ -691,9 +846,12 @@ button:focus,select:focus{outline:2px solid var(--bright);outline-offset:2px}
   }
 
   radiusSel.addEventListener('change',()=>{
-    // Trail, Lufträume und optionaler OSM-Hintergrund werden neu skaliert.
-    if(screenMode.value==='osm') fitOsmMap();
-    render();
+    if(screenMode.value==='osm'){
+      fitOsmMap();
+      renderOsm();
+    }else{
+      render();
+    }
     load();
     loadAirspaces();
   });

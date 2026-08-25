@@ -1,13 +1,11 @@
-# EDNX Live Radar v7.4
+# EDNX Live Radar v7.5
 
-Neu:
-- SCREEN-Auswahl:
-  - RADAR: schwarzer synthetischer Radar-Hintergrund mit Raster
-  - OPENSTREETMAP: echte OSM-Karte als Hintergrund
-- AIRSPACE bleibt davon unabhängig:
-  - AN = alle openAIP-Lufträume
-  - AUS = keine Lufträume
-- Flugzeuge, Trails, EDNX-Marker und openAIP-Airspaces bleiben in beiden Screens sichtbar.
-- OSM ist absichtlich stark abgedunkelt, damit die Traffic-Daten gut lesbar bleiben.
-- Range 10/15/20/30/50/75/100 km.
-- Hubschrauber-Symbole aus v7.3 bleiben erhalten.
+Wesentliche Änderung:
+- RADAR und OPENSTREETMAP sind jetzt zwei getrennte Render-Engines.
+- RADAR benutzt weiterhin die lokale km-basierte SVG-Projektion.
+- OPENSTREETMAP wird vollständig von Leaflet/Web-Mercator gerendert.
+- In OSM werden nun auch Flugzeuge, Tracks, EDNX und openAIP-Lufträume direkt über ihre geografischen Koordinaten von Leaflet positioniert.
+- Das bisherige problematische Übereinanderlegen von OSM-Tiles und dem Radar-SVG entfällt vollständig.
+- SCREEN: RADAR / OPENSTREETMAP
+- AIRSPACE: AN / AUS
+- Range und übrige Filter bleiben erhalten.
