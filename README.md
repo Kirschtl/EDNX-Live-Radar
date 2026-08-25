@@ -1,19 +1,22 @@
-# EDNX Live Radar v7.6
+# EDNX Live Radar v8.0 – Web
 
-OpenStreetMap komplett neu umgesetzt, ohne Leaflet.
+Diese Version überträgt den finalen Stand der Fire-TV-App v2.0 auf die Netlify-Webapp.
 
-Warum:
-- Die vorherigen Leaflet-Versionen zeigten auf dem Zielbrowser falsch/fragmentiert positionierte Tiles.
-- Zusätzlich brach die OSM-Overlay-Logik durch eine falsche Trail-Variable ab.
+Übernommen:
+- adaptive Radar-Geometrie / bildschirmfüllende Darstellung
+- korrigierte Skalierung für kleine Ranges
+- 5 / 10 / 15 / 20 / 30 / 50 / 75 / 100 km
+- OpenStreetMap-Projektion und Kachel-Skalierung aus der Fire-TV-Version
+- Flugzeuge und Airspaces auch in der Kartenansicht
+- Ziel-Cache / Coasting bei kurzzeitig fehlenden ADS-B-Zielen
+- robustere Aktualisierung bei 429/502/503/504
+- Trail-Historie bleibt beim Umschalten und bei Range-Wechseln konsistent
+- kompaktere Seitenliste und Bedienleiste
+- Hubschrauber-Symbole und bestehende Filter
 
-v7.6:
-- RADAR bleibt die stabile SVG-Ansicht.
-- OPENSTREETMAP nutzt einen eigenen Slippy-Map-Renderer:
-  - OSM-Kacheln werden anhand der offiziellen Web-Mercator-Tile-Mathematik selbst positioniert.
-  - Keine Leaflet-CSS-/Layout-Abhängigkeit.
-- Flugzeuge, Trails, EDNX und openAIP-Lufträume werden im OSM-Modus mit exakt derselben Web-Mercator-Projektion gerendert.
-- Damit liegen München, EDNX, Traffic und Airspaces in derselben geografischen Projektion.
-- SCREEN: RADAR / OPENSTREETMAP
-- AIRSPACE: AN / AUS
-- Range 10/15/20/30/50/75/100 km
-- Hubschrauber-Symbole bleiben erhalten.
+Web-spezifisch:
+- ADS-B: /.netlify/functions/aircraft
+- Airspaces: /.netlify/functions/airspaces
+
+Damit ist die Darstellungs-/Filterlogik weitgehend identisch zur Fire-TV-v2.0-Version,
+während die Webapp weiterhin über die vorhandenen Netlify Functions arbeitet.

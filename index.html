@@ -26,7 +26,7 @@ html,body{
   font-family:Consolas,Menlo,Monaco,"Courier New",monospace;
   overflow:hidden;
 }
-body{display:flex;flex-direction:column}
+body{display:flex;flex-direction:column;padding:9px 14px 10px}
 header{
   height:72px;flex:0 0 72px;
   display:flex;align-items:center;justify-content:space-between;
@@ -41,7 +41,7 @@ header{
 main{
   flex:1;min-height:0;
   display:grid;
-  grid-template-columns:minmax(0,1fr) 360px;
+  grid-template-columns:minmax(0,1fr) 190px;
 }
 #radarWrap{
   position:relative;
@@ -96,46 +96,48 @@ main{
 aside{
   border-left:1px solid var(--grid);
   background:#010401;
-  padding:14px 16px;
+  padding:8px 8px;
   overflow:auto;
 }
 aside h2{
-  font-size:13px;letter-spacing:.14em;
-  color:var(--muted);margin:0 0 10px
+  font-size:10px;letter-spacing:.06em;
+  color:var(--muted);margin:0 0 5px;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis
 }
 .flight{
   display:grid;
-  grid-template-columns:32px minmax(0,1fr);
-  gap:10px;
-  padding:11px 0;
+  grid-template-columns:20px minmax(0,1fr);
+  gap:5px;
+  padding:6px 0;
   border-top:1px solid #113018;
 }
 .flight:first-of-type{border-top:0}
-.smallIcon{width:28px;height:28px;display:block}
-.call{font-size:17px;font-weight:700;color:var(--bright)}
-.meta{font-size:12px;color:#81ae84;line-height:1.45;margin-top:3px}
+.smallIcon{width:19px;height:19px;display:block}
+.call{font-size:13px;font-weight:700;color:var(--bright);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.meta{font-size:9px;color:#81ae84;line-height:1.3;margin-top:2px}
 footer{
-  min-height:78px;
+  height:44px;min-height:44px;flex:0 0 44px;
   display:flex;align-items:center;justify-content:space-between;
-  gap:14px;flex-wrap:wrap;
-  padding:10px 18px;
+  gap:0;flex-wrap:nowrap;
+  padding:4px 16px;
+  overflow:hidden;
   border-top:1px solid var(--grid);
 }
-.controls{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
-label{font-size:11px;color:var(--muted);display:flex;align-items:center;gap:6px}
+.controls{display:flex;gap:6px;flex-wrap:nowrap;align-items:center;min-width:0;width:100%}
+label{font-size:9px;color:var(--muted);display:flex;align-items:center;gap:3px;white-space:nowrap}
 select,button{
-  height:44px;
+  height:26px;
   background:#061007;
   color:var(--bright);
   border:1px solid var(--grid2);
-  border-radius:5px;
-  padding:0 12px;
+  border-radius:4px;
+  padding:0 5px;
   font:inherit;
-  font-size:13px;
+  font-size:9px;
 }
 button{cursor:pointer}
 button:focus,select:focus{outline:2px solid var(--bright);outline-offset:2px}
-#msg{font-size:11px;color:var(--muted);max-width:560px;text-align:right}
+#msg{font-size:7px;color:#527a57;line-height:1.1;margin-top:2px;max-width:720px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 @media(max-width:900px){
   main{grid-template-columns:1fr}
   aside{display:none}
@@ -151,6 +153,7 @@ button:focus,select:focus{outline:2px solid var(--bright);outline-offset:2px}
   <div>
     <div class="title">EDNX LIVE RADAR</div>
     <div class="sub">OBERSCHLEISSHEIM · ADS-B LIVE</div>
+    <div id="msg">Quelle: ADSB.lol · Aktualisierung alle 10 Sekunden · adaptive Pause bei Serverlimit</div>
   </div>
   <div class="status">
     <span id="state">● VERBINDE…</span><br>
@@ -165,31 +168,31 @@ button:focus,select:focus{outline:2px solid var(--bright);outline-offset:2px}
       <svg id="mapOverlay"></svg>
       <div id="mapAttribution">© OpenStreetMap contributors · Airspace © openAIP</div>
     </div>
-    <svg id="radar" viewBox="0 0 1200 780" role="img" aria-label="EDNX Live Radar">
+    <svg id="radar" viewBox="0 30 1130 700" role="img" aria-label="EDNX Live Radar">
       <!-- rechteckige Radarfläche -->
-      <rect x="50" y="30" width="1030" height="700" fill="none" stroke="#2f6a3a" stroke-width="1.2"/>
+      <rect id="radarFrame" x="0" y="30" width="1130" height="700" fill="none" stroke="#2f6a3a" stroke-width="1.2"/>
 
       <!-- Raster -->
       <g id="grid" fill="none" stroke="#173d20" stroke-width="1">
-        <line x1="50" y1="205" x2="1080" y2="205"/>
-        <line x1="50" y1="380" x2="1080" y2="380"/>
-        <line x1="50" y1="555" x2="1080" y2="555"/>
-        <line x1="307.5" y1="30" x2="307.5" y2="730"/>
-        <line x1="565" y1="30" x2="565" y2="730"/>
-        <line x1="822.5" y1="30" x2="822.5" y2="730"/>
+        <line id="gridH1" x1="0" y1="205" x2="1130" y2="205"/>
+        <line id="gridH2" x1="0" y1="380" x2="1130" y2="380"/>
+        <line id="gridH3" x1="0" y1="555" x2="1130" y2="555"/>
+        <line id="gridV1" x1="282.5" y1="30" x2="282.5" y2="730"/>
+        <line id="gridV2" x1="565" y1="30" x2="565" y2="730"/>
+        <line id="gridV3" x1="847.5" y1="30" x2="847.5" y2="730"/>
       </g>
 
       <!-- Hauptachsen -->
       <g fill="none" stroke="#285b33" stroke-width="1.2">
-        <line x1="565" y1="30" x2="565" y2="730"/>
-        <line x1="50" y1="380" x2="1080" y2="380"/>
+        <line id="axisV" x1="565" y1="30" x2="565" y2="730"/>
+        <line id="axisH" x1="0" y1="380" x2="1130" y2="380"/>
       </g>
 
       <g fill="#5f8d66" font-size="14">
-        <text x="555" y="22">N</text>
-        <text x="1088" y="385">E</text>
-        <text x="555" y="750">S</text>
-        <text x="28" y="385">W</text>
+        <text id="compassN" x="555" y="48">N</text>
+        <text id="compassE" x="1110" y="385">E</text>
+        <text id="compassS" x="555" y="720">S</text>
+        <text id="compassW" x="10" y="385">W</text>
 
         <text id="topRange" x="84" y="54">±30 km</text>
         <text id="gridNorth" x="575" y="55">N +30</text>
@@ -208,7 +211,7 @@ button:focus,select:focus{outline:2px solid var(--bright);outline-offset:2px}
 
       <defs>
         <clipPath id="radarClip">
-          <rect x="50" y="30" width="1030" height="700"/>
+          <rect id="radarClipRect" x="0" y="30" width="1130" height="700"/>
         </clipPath>
       </defs>
       <g id="airspaces" clip-path="url(#radarClip)"></g>
@@ -234,6 +237,7 @@ button:focus,select:focus{outline:2px solid var(--bright);outline-offset:2px}
     </label>
     <label>RADIUS
       <select id="radius">
+        <option value="5">5 km</option>
         <option value="10">10 km</option>
         <option value="15">15 km</option>
         <option value="20">20 km</option>
@@ -266,7 +270,6 @@ button:focus,select:focus{outline:2px solid var(--bright);outline-offset:2px}
     </label>
     <button id="refresh" type="button">AKTUALISIEREN</button>
   </div>
-  <div id="msg">Quelle: ADSB.lol · Aktualisierung alle 10 Sekunden</div>
 </footer>
 
 <script>
@@ -275,14 +278,17 @@ button:focus,select:focus{outline:2px solid var(--bright);outline-offset:2px}
   const EDNX_GROUND_RADIUS_KM=1.8;
   const $=id=>document.getElementById(id);
   const planes=$('planes'), trails=$('trails'), list=$('list');
+  const radarEl=$('radar'), radarWrap=$('radarWrap');
   const airspacesG=$('airspaces'), airspaceLabelsG=$('airspaceLabels');
   const radiusSel=$('radius'), altSel=$('alt'), groundSel=$('ground'), airspaceMode=$('airspaceMode');
   const screenMode=$('screenMode');
   const mapView=$('mapView'), mapTiles=$('mapTiles'), mapOverlay=$('mapOverlay');
 
-  let raw=[], updated=0, busy=false;
+  let raw=[], updated=0, busy=false, lastLoadStarted=0, nextAllowedLoad=0;
   let airspaceItems=[], airspaceBusy=false;
-  let mapState={zoom:11,centerWorldX:0,centerWorldY:0,width:0,height:0};
+  let mapState={zoom:11,centerWorldX:0,centerWorldY:0,width:0,height:0,scale:1};
+  const targetCache=new Map();
+  const TARGET_COAST_MS=30000;
 
   // Trail-Historie wird in GEO-Koordinaten gespeichert.
   // Dadurch bleibt sie bei Range-Änderungen korrekt und wird neu projiziert.
@@ -373,6 +379,32 @@ button:focus,select:focus{outline:2px solid var(--bright);outline-offset:2px}
     return {x,y};
   }
 
+  function setupRadarGeometry(){
+    const r=radarWrap.getBoundingClientRect();
+    if(!r.width||!r.height) return;
+    const viewH=700;
+    const viewW=viewH*(r.width/r.height);
+    const left=565-viewW/2;
+    const right=565+viewW/2;
+    radarEl.setAttribute('viewBox',`${left} 30 ${viewW} ${viewH}`);
+    $('radarFrame').setAttribute('x',left);
+    $('radarFrame').setAttribute('width',viewW);
+    $('radarClipRect').setAttribute('x',left);
+    $('radarClipRect').setAttribute('width',viewW);
+    for(const id of ['gridH1','gridH2','gridH3','axisH']){
+      $(id).setAttribute('x1',left); $(id).setAttribute('x2',right);
+    }
+    const xs=[left+viewW/4,565,right-viewW/4];
+    ['gridV1','gridV2','gridV3'].forEach((id,i)=>{
+      $(id).setAttribute('x1',xs[i]); $(id).setAttribute('x2',xs[i]);
+    });
+    $('compassE').setAttribute('x',right-18);
+    $('compassW').setAttribute('x',left+8);
+    $('topRange').setAttribute('x',left+35);
+    $('gridWest').setAttribute('x',left+18);
+    $('gridEast').setAttribute('x',right-80);
+  }
+
 
 
   function mercatorWorld(lat,lon,z){
@@ -407,7 +439,11 @@ button:focus,select:focus{outline:2px solid var(--bright);outline-offset:2px}
     const range=Number(radiusSel.value);
     const zoom=chooseMapZoom(width,height,range);
     const c=mercatorWorld(CENTER.lat,CENTER.lon,zoom);
-    mapState={zoom,centerWorldX:c.x,centerWorldY:c.y,width,height};
+    const oneKmNorth=mercatorWorld(CENTER.lat+1/111.32,CENTER.lon,zoom);
+    const nativePixelsPerKm=Math.abs(oneKmNorth.y-c.y)||1;
+    const desiredPixelsPerKm=height/(2*range);
+    const scale=desiredPixelsPerKm/nativePixelsPerKm;
+    mapState={zoom,centerWorldX:c.x,centerWorldY:c.y,width,height,scale};
 
     mapOverlay.setAttribute('viewBox',`0 0 ${width} ${height}`);
     mapOverlay.setAttribute('width',width);
@@ -419,22 +455,22 @@ button:focus,select:focus{outline:2px solid var(--bright);outline-offset:2px}
   function mapProject(lat,lon){
     const p=mercatorWorld(Number(lat),Number(lon),mapState.zoom);
     return {
-      x:(p.x-mapState.centerWorldX)+mapState.width/2,
-      y:(p.y-mapState.centerWorldY)+mapState.height/2
+      x:(p.x-mapState.centerWorldX)*mapState.scale+mapState.width/2,
+      y:(p.y-mapState.centerWorldY)*mapState.scale+mapState.height/2
     };
   }
 
   function renderMapTiles(){
-    const {zoom,centerWorldX,centerWorldY,width,height}=mapState;
+    const {zoom,centerWorldX,centerWorldY,width,height,scale}=mapState;
     if(!width||!height) return;
 
     mapTiles.innerHTML='';
-    const leftWorld=centerWorldX-width/2;
-    const topWorld=centerWorldY-height/2;
+    const leftWorld=centerWorldX-width/(2*scale);
+    const topWorld=centerWorldY-height/(2*scale);
     const firstX=Math.floor(leftWorld/256);
-    const lastX=Math.floor((leftWorld+width)/256);
+    const lastX=Math.floor((leftWorld+width/scale)/256);
     const firstY=Math.floor(topWorld/256);
-    const lastY=Math.floor((topWorld+height)/256);
+    const lastY=Math.floor((topWorld+height/scale)/256);
     const n=Math.pow(2,zoom);
 
     for(let ty=firstY;ty<=lastY;ty++){
@@ -445,8 +481,10 @@ button:focus,select:focus{outline:2px solid var(--bright);outline-offset:2px}
         img.alt='';
         img.draggable=false;
         img.src=`https://tile.openstreetmap.org/${zoom}/${wrappedX}/${ty}.png`;
-        img.style.left=`${Math.round(tx*256-leftWorld)}px`;
-        img.style.top=`${Math.round(ty*256-topWorld)}px`;
+        img.style.width=`${256*scale}px`;
+        img.style.height=`${256*scale}px`;
+        img.style.left=`${(tx*256-leftWorld)*scale}px`;
+        img.style.top=`${(ty*256-topWorld)*scale}px`;
         let retried=false;
         img.addEventListener('error',()=>{
           if(retried) return;
@@ -532,8 +570,12 @@ button:focus,select:focus{outline:2px solid var(--bright);outline-offset:2px}
       const d=distanceKm(CENTER.lat,CENTER.lon,Number(ac.lat),Number(ac.lon));
       if(d>maxKm) return null;
       if(!isAllowedGround(ac,d)) return null;
-      return {...ac,_alt:a,_dist:d};
+      return {...ac,_alt:a,_dist:d,_bear:bearing(CENTER.lat,CENTER.lon,Number(ac.lat),Number(ac.lon))};
     }).filter(Boolean);
+
+    // Die Seitenliste in der Kartenansicht immer aus genau demselben
+    // Radius-/Höhenfilter wie die Kartensymbole aufbauen.
+    list.innerHTML='';
 
     for(const ac of visible){
       const p=mapProject(Number(ac.lat),Number(ac.lon));
@@ -567,7 +609,30 @@ button:focus,select:focus{outline:2px solid var(--bright);outline-offset:2px}
       t2.textContent=dl.second;
       tx.appendChild(t1); tx.appendChild(t2);
       mapOverlay.appendChild(tx);
+
+      const div=document.createElement('div');
+      div.className='flight';
+      const cs=callsign(ac), registration=reg(ac);
+      const top=cs||registration||name(ac);
+      const secondary=(cs&&registration)?registration:(type(ac)!=='—'?type(ac):'');
+      div.innerHTML=`
+        <svg class="smallIcon" viewBox="-12 -12 24 24" aria-hidden="true">
+          <path d="${aircraftSvgPath(ac,true)}"
+            fill="none" stroke="#9cff81" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+        <div>
+          <div class="call">${esc(top)}</div>
+          <div class="meta">${secondary?esc(secondary)+' · ':''}${esc(type(ac))}<br>
+          ${ac._alt===0?'GROUND':fmt(ac._alt)+' ft'} · ${speed(ac)===null?'—':speed(ac)+' kt'} · ${hdg(ac)===null?'—':String(Math.round(hdg(ac))).padStart(3,'0')+'°'}<br>
+          ${ac._dist.toFixed(1)} km · ${Math.round(ac._bear)}°</div>
+        </div>`;
+      list.appendChild(div);
     }
+
+    $('listTitle').textContent=`AIRCRAFT ≤ ${maxAlt>90000?'ALLE':fmt(maxAlt)+' FT'} · ${maxKm} KM · ${visible.length}`;
+    $('msg').textContent=raw.length
+      ? `${visible.length} angezeigt · ${raw.length} Rohziele · Trail 2 min · Ground nur EDNX · Airspace ${airspaceMode.options[airspaceMode.selectedIndex].text}`
+      : 'Keine Ziele empfangen';
   }
 
   function applyScreenMode(){
@@ -745,6 +810,7 @@ button:focus,select:focus{outline:2px solid var(--bright);outline-offset:2px}
 
   function render(){
     if(screenMode && screenMode.value==='map'){ renderMap(); return; }
+    setupRadarGeometry();
     const maxKm=Number(radiusSel.value), maxAlt=Number(altSel.value);
 
     const visible=raw.map(ac=>{
@@ -766,7 +832,7 @@ button:focus,select:focus{outline:2px solid var(--bright);outline-offset:2px}
       const p=project(Number(ac.lat),Number(ac.lon),maxKm);
       const heading=hdg(ac)??ac._bear;
 
-      const arr=rememberPosition(ac);
+      const arr=history.get(key(ac))||[];
 
       // Alte Spuren immer anhand der GEO-Koordinaten neu projizieren.
       if(arr.length>1){
@@ -835,8 +901,13 @@ button:focus,select:focus{outline:2px solid var(--bright);outline-offset:2px}
       : 'Keine Ziele empfangen';
   }
 
-  async function load(){
+  async function load(force=false){
     if(busy)return;
+    const now=Date.now();
+    // Normal alle 10 Sekunden; nach einem Serverlimit automatisch pausieren.
+    if(!force && nextAllowedLoad && now<nextAllowedLoad)return;
+    if(!force && lastLoadStarted && now-lastLoadStarted<9000)return;
+    lastLoadStarted=now;
     busy=true;
     $('state').textContent='● LADE…';
     $('state').className='live';
@@ -846,15 +917,41 @@ button:focus,select:focus{outline:2px solid var(--bright);outline-offset:2px}
       const res=await fetch(`/.netlify/functions/aircraft?radius=${encodeURIComponent(R)}`,{cache:'no-store'});
       if(!res.ok) throw new Error('HTTP '+res.status);
       const data=await res.json();
-      raw=Array.isArray(data.ac)?data.ac:[];
+      const received=Array.isArray(data.ac)?data.ac:[];
+      const receivedAt=Date.now();
+      for(const ac of received){
+        const k=key(ac);
+        const previous=targetCache.get(k);
+        // Teilweise ADS-B-Datensätze mit dem letzten vollständigen Ziel zusammenführen.
+        targetCache.set(k,{ac:{...(previous?previous.ac:{}),...ac},seen:receivedAt});
+      }
+      for(const [k,item] of targetCache){
+        if(receivedAt-item.seen>TARGET_COAST_MS) targetCache.delete(k);
+      }
+      raw=[...targetCache.values()].map(item=>item.ac);
+      // Historie unabhängig von der aktuell gewählten Ansicht fortschreiben.
+      // So bleibt der Trail beim Wechsel zwischen Radar und Karte erhalten.
+      for(const ac of raw){
+        if(Number.isFinite(Number(ac.lat))&&Number.isFinite(Number(ac.lon))) rememberPosition(ac);
+      }
+      nextAllowedLoad=0;
       updated=Date.now();
       $('state').textContent='● LIVE';
       $('state').className='live';
       render();
     }catch(e){
-      $('state').textContent='● VERBINDUNGSFEHLER';
-      $('state').className='err';
-      $('msg').textContent='Fehler: '+e.message;
+      // Bei einer vorübergehenden Begrenzung die letzte gültige Anzeige behalten.
+      const temporary=/HTTP (429|502|503|504)/.test(String(e.message));
+      nextAllowedLoad=Date.now()+(temporary?30000:20000);
+      if(raw.length && temporary){
+        $('state').textContent='● LIVE';
+        $('state').className='live';
+        $('msg').textContent='Letzte Live-Daten werden angezeigt · nächste Abfrage automatisch';
+      }else{
+        $('state').textContent='● VERBINDUNGSFEHLER';
+        $('state').className='err';
+        $('msg').textContent='Fehler: '+e.message;
+      }
     }finally{
       busy=false;
     }
@@ -862,7 +959,7 @@ button:focus,select:focus{outline:2px solid var(--bright);outline-offset:2px}
 
   radiusSel.addEventListener('change',()=>{
     if(screenMode.value==='map') renderMap(); else render();
-    load();
+    load(true);
     loadAirspaces();
   });
   altSel.addEventListener('change',()=>screenMode.value==='map'?renderMap():render());
@@ -873,12 +970,12 @@ button:focus,select:focus{outline:2px solid var(--bright);outline-offset:2px}
     if(airspaceMode.value!=='off' && !airspaceItems.length) loadAirspaces();
   });
   $('refresh').addEventListener('click',()=>{
-    load();
+    load(true);
     loadAirspaces();
   });
 
-  window.addEventListener('resize',()=>{ if(screenMode.value==='map') renderMap(); });
-  setInterval(load,10000);
+  window.addEventListener('resize',()=>{ if(screenMode.value==='map') renderMap(); else render(); });
+  setInterval(()=>load(false),10000);
   setInterval(()=>{
     $('clock').textContent=new Date().toLocaleTimeString('de-DE',{hour12:false,timeZone:'UTC'})+' UTC';
     $('age').textContent=updated?Math.floor((Date.now()-updated)/1000)+' s alt':'keine Daten';
