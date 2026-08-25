@@ -9,7 +9,7 @@ export default async (request) => {
     const upstream = `https://api.adsb.lol/v2/point/48.239166/11.559334/${nm}`;
 
     const response = await fetch(upstream, {
-      headers: { "User-Agent": "EDNX-Live-Radar/6.0" }
+      headers: { "User-Agent": "EDNX-Live-Radar/6.1" }
     });
 
     if (!response.ok) {

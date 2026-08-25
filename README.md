@@ -1,14 +1,11 @@
-# EDNX Live Radar v6
+# EDNX Live Radar v6.1
 
-Neu:
-- optionale OpenFlightMaps-VFR-Karte als Hintergrund
-- Toggle `VFR MAP: AN/AUS`
-- VFR-Karte startet AUS
-- Basis- und Aero-Layer von open flightmaps werden gemeinsam geschaltet
-- Flugzeuge und Trails werden über Leaflet geografisch positioniert
-- Range-Wechsel bleibt geometrisch korrekt
-- kein Radar-Beam
-- Ground Traffic nur direkt bei EDNX
+Stabile v5-Radarlogik plus optionale OpenFlightMaps-Hintergrundkarte.
 
-Hinweis:
-Die OpenFlightMaps-Tiles sind ein externer Dienst. Attribution wird in der Kartenansicht angezeigt.
+Wichtig:
+- Radar, Flugzeuge, Labels, Trails und Sidebar bleiben vollständig v5.
+- Leaflet/OpenFlightMaps liegt ausschließlich als Hintergrund unter dem SVG.
+- VFR MAP startet AUS.
+- Toggle: VFR MAP AN/AUS.
+- Range-Wechsel skaliert Trail und Kartenhintergrund neu.
+- Kein Radar-Beam.
